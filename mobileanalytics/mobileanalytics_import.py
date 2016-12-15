@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 
 import os
-import sys
 import requests
 import hashlib
 import MySQLdb
@@ -359,7 +358,7 @@ LINES TERMINATED BY '\n'
 IGNORE 6 LINES; """
 
 print "Checking to see if table mobileanalytics_prices exists"
-cursor.execute(""" SELECT * FROM information_schema.tables WHERE table_schema = 'aws_prices' AND table_name = 'mobileanalytics_prices' LIMIT 1; """)
+cursor.execute("SELECT * FROM information_schema.tables WHERE table_schema = '" + mariadb_db + "' AND table_name = 'mobileanalytics_prices' LIMIT 1;")
 if cursor.fetchone() is not None:
     print "Dropping existing table mobileanalytics_prices"
     cursor.execute(""" DROP TABLE mobileanalytics_prices; """)
