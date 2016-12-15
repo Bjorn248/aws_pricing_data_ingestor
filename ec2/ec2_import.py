@@ -357,8 +357,11 @@ FIELDS TERMINATED BY ','
 LINES TERMINATED BY '\n'
 IGNORE 6 LINES; """
 
-print "Dropping existing table ec2_prices"
-cursor.execute(""" DROP TABLE ec2_prices; """)
+print "Checking to see if table ec2_prices exists"
+cursor.execute(""" SELECT * FROM information_schema.tables WHERE table_schema = 'aws_prices' AND table_name = 'ec2_prices' LIMIT 1; """)
+if cursor.fetchone() is not None:
+    print "Dropping existing table ec2_prices"
+    cursor.execute(""" DROP TABLE ec2_prices; """)
 print "Recreating table..."
 cursor.execute(ec2_schema)
 print "Loading csv data..."
