@@ -1,10 +1,13 @@
 #!/usr/bin/env python2
 
 import os
+import sys
 import requests
 import hashlib
+from multiprocessing import Pool
 import MySQLdb
 import csv
+import json
 
 if "MARIADB_HOST" in os.environ:
     mariadb_host = os.environ["MARIADB_HOST"]
@@ -53,15 +56,15 @@ column_titles = {
     },
     "StartingRange": {
         "name": "StartingRange",
-        "type": "VARCHAR(16)"
+        "type": "VARCHAR(200)"
     },
     "EndingRange": {
         "name": "EndingRange",
-        "type": "VARCHAR(16)"
+        "type": "VARCHAR(200)"
     },
     "Unit": {
         "name": "Unit",
-        "type": "VARCHAR(10)"
+        "type": "VARCHAR(50)"
     },
     "PricePerUnit": {
         "name": "PricePerUnit",
@@ -85,7 +88,7 @@ column_titles = {
     },
     "Product Family": {
         "name": "ProductFamily",
-        "type": "VARCHAR(50)"
+        "type": "VARCHAR(200)"
     },
     "serviceCode": {
         "name": "ServiceCode",
@@ -145,7 +148,7 @@ column_titles = {
     },
     "Volume Type": {
         "name": "VolumeType",
-        "type": "VARCHAR(30)"
+        "type": "VARCHAR(100)"
     },
     "Max Volume Size": {
         "name": "MaxVolumeSize",
@@ -193,7 +196,7 @@ column_titles = {
     },
     "Transfer Type": {
         "name": "TransferType",
-        "type": "VARCHAR(50)"
+        "type": "VARCHAR(200)"
     },
     "From Location": {
         "name": "FromLocation",
@@ -300,24 +303,24 @@ def md5(file):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def download_csv(targetCSV):
-    print("Downloading CSV...")
-    response = requests.get(targetCSV, stream=True)
+def download_file(targetURL, filename):
+    print("Downloading file from " + targetURL + "...\n")
+    response = requests.get(targetURL, stream=True)
 
-    with open('./ec2_prices.csv', 'wb') as f:
+    with open(filename, 'wb') as f:
         f.write(response.content)
 
-def parse_csv_schema():
-    with open('./ec2_prices.csv', 'rb') as f:
+def parse_csv_schema(filename, table_name):
+    with open(filename, 'rb') as f:
         reader = csv.reader(f)
         for row in reader:
             if row[0] == "SKU":
-                return generate_schema_from_row(row)
+                return generate_schema_from_row(row, table_name)
                 break
 
-def generate_schema_from_row(row):
+def generate_schema_from_row(row, table_name):
     print "Generating SQL Schema from CSV..."
-    schema_sql = "create table ec2_prices(\n"
+    schema_sql = "create table " + table_name + "(\n"
     for column_title in row:
         if column_title in column_titles:
             schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
@@ -327,44 +330,91 @@ def generate_schema_from_row(row):
     schema_sql += ");\n"
     return schema_sql
 
-url = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.csv"
+def download_offer_file(offer_code_url):
 
-file_exists = os.path.isfile('./ec2_prices.csv')
+    offer_code = offer_code_url.split('/')[4]
 
-if file_exists:
-    resp = requests.head(url)
-    md5_remote = resp.headers['etag'][1:-1]
-    if md5('./ec2_prices.csv') == md5_remote:
-        print("You already have the latest csv!")
+    base_url = "https://pricing.us-east-1.amazonaws.com"
+
+    offer_code_url = offer_code_url[:-5] + ".csv"
+
+    url = base_url + offer_code_url
+
+    local_filename = "./" + offer_code + ".csv"
+
+    file_exists = os.path.isfile(local_filename)
+
+    if file_exists:
+        resp = requests.head(url)
+        md5_remote = resp.headers['etag'][1:-1]
+        if md5(local_filename) == md5_remote:
+            print("You already have the latest csv for " + offer_code + "!")
+        else:
+            download_file(url, local_filename)
     else:
-        download_csv(url)
+        download_file(url, local_filename)
+
+    file_exists = os.path.isfile(local_filename)
+
+def import_csv_into_mariadb(filename):
+    table_name = filename[:-4]
+
+    schema = parse_csv_schema(filename, table_name)
+
+    db = MySQLdb.connect(host=mariadb_host,
+                          user=mariadb_user,
+                          passwd=mariadb_password,
+                          db=mariadb_db,
+                          local_infile=1)
+
+    cursor = db.cursor()
+    load_data = "LOAD DATA LOCAL INFILE '" + filename + "' INTO TABLE " + table_name
+    load_data += """ FIELDS TERMINATED BY ','
+        ENCLOSED BY '"'
+    LINES TERMINATED BY '\n'
+    IGNORE 6 LINES; """
+
+    print "Checking to see if table " + table_name + " exists..."
+    cursor.execute("SELECT * FROM information_schema.tables WHERE table_schema = '" + mariadb_db + "' AND table_name = '" + table_name + "' LIMIT 1;")
+    if cursor.fetchone() is not None:
+        print "Dropping existing table " + table_name
+        cursor.execute("DROP TABLE " + table_name + ";")
+    print "Recreating table..."
+    cursor.execute(schema)
+    print "Loading csv data..."
+    cursor.execute(load_data)
+    db.commit()
+    cursor.close()
+
+offer_index_filename = "./offer_index.json"
+
+offer_index_exists = os.path.isfile(offer_index_filename)
+
+offer_index_url = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json"
+
+if offer_index_exists:
+    resp = requests.head(offer_index_url)
+    md5_remote = resp.headers['etag'][1:-1]
+    if md5(offer_index_filename) == md5_remote:
+        print("You already have the latest offer index!")
+    else:
+        download_file(offer_index_url, offer_index_filename)
 else:
-    download_csv(url)
+    download_file(offer_index_url, offer_index_filename)
 
-ec2_schema = parse_csv_schema()
 
-db = MySQLdb.connect(host=mariadb_host,
-                      user=mariadb_user,
-                      passwd=mariadb_password,
-                      db=mariadb_db,
-                      local_infile=1)
+with open(offer_index_filename) as json_data:
+    offer_index = json.load(json_data)
 
-cursor = db.cursor()
-Query = """ LOAD DATA LOCAL INFILE './ec2_prices.csv'
-INTO TABLE ec2_prices
-FIELDS TERMINATED BY ','
-    ENCLOSED BY '"'
-LINES TERMINATED BY '\n'
-IGNORE 6 LINES; """
+filenames = []
+urls = []
+number_of_threads = 0
+for offer, offer_info in offer_index['offers'].iteritems():
+    number_of_threads += 1
+    filenames.append(offer + ".csv")
+    urls.append(offer_info['currentVersionUrl'])
 
-print "Checking to see if table ec2_prices exists"
-cursor.execute("SELECT * FROM information_schema.tables WHERE table_schema = '" + mariadb_db + "' AND table_name = 'ec2_prices' LIMIT 1;")
-if cursor.fetchone() is not None:
-    print "Dropping existing table ec2_prices"
-    cursor.execute(""" DROP TABLE ec2_prices; """)
-print "Recreating table..."
-cursor.execute(ec2_schema)
-print "Loading csv data..."
-cursor.execute(Query)
-db.commit()
-cursor.close()
+pool = Pool(number_of_threads)
+
+pool.map(download_offer_file, urls)
+pool.map(import_csv_into_mariadb, filenames)
