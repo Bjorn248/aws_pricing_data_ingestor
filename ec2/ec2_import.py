@@ -300,10 +300,11 @@ if file_exists:
 else:
     download_csv()
 
-db = MySQLdb.connect(host="localhost", # The Host
-                      user="pricer", # username
-                      passwd="pricer123", # password
-                      db="aws_pricing") # name of the data base
+db = MySQLdb.connect(host="localhost",
+                      user="pricer",
+                      passwd="prices123",
+                      db="aws_prices",
+                      local_infile=1)
 
 cursor = db.cursor()
 Query = """ LOAD DATA LOCAL INFILE './ec2_prices.csv'
