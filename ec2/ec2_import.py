@@ -4,6 +4,7 @@ import os.path
 import requests
 import hashlib
 import MySQLdb
+import csv
 
 column_titles = {
     "SKU": {
@@ -92,7 +93,7 @@ column_titles = {
     },
     "vCPU": {
         "name": "vCPU",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
     },
     "Physical Processor": {
         "name": "PhysicalProcessor",
@@ -130,7 +131,7 @@ column_titles = {
         "name": "MaxVolumeSize",
         "type": "VARCHAR(10)"
     },
-    "Max IOPS/Volume": {
+    "Max IOPS/volume": {
         "name": "MaxIOPSVolume",
         "type": "VARCHAR(40)"
     },
@@ -212,35 +213,35 @@ column_titles = {
     },
     "GPU": {
         "name": "GPU",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
     },
     "Instance Capacity - 10xlarge": {
         "name": "InstanceCapacity10xLarge",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
     },
     "Instance Capacity - 2xlarge": {
         "name": "InstanceCapacity2xLarge",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
     },
     "Instance Capacity - 4xlarge": {
         "name": "InstanceCapacity4xLarge",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
     },
     "Instance Capacity - 8xlarge": {
         "name": "InstanceCapacity8xLarge",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
     },
     "Instance Capacity - large": {
         "name": "InstanceCapacityLarge",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
     },
     "Instance Capacity - medium": {
         "name": "InstanceCapacityMedium",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
     },
     "Instance Capacity - xlarge": {
         "name": "InstanceCapacityxLarge",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
     },
     "Intel AVX Available": {
         "name": "IntelAVXAvailable",
@@ -256,7 +257,7 @@ column_titles = {
     },
     "Physical Cores": {
         "name": "PhysicalCores",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
     },
     "Pre Installed S/W": {
         "name": "PreInstalledSW",
@@ -268,7 +269,7 @@ column_titles = {
      },
     "Sockets": {
         "name": "Sockets",
-        "type": "SMALLINT"
+        "type": "VARCHAR(10)"
      }
 }
 
@@ -279,12 +280,32 @@ def md5(file):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def download_csv():
+def download_csv(targetCSV):
     print("Downloading CSV...")
-    response = requests.get(url, stream=True)
+    response = requests.get(targetCSV, stream=True)
 
     with open('./ec2_prices.csv', 'wb') as f:
         f.write(response.content)
+
+def parse_csv_schema():
+    with open('./ec2_prices.csv', 'rb') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if row[0] == "SKU":
+                return generate_schema_from_row(row)
+                break
+
+def generate_schema_from_row(row):
+    print "Generating SQL Schema from CSV..."
+    schema_sql = "create table ec2_prices(\n"
+    for column_title in row:
+        if column_title in column_titles:
+            schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
+        else:
+            schema_sql += ''.join(e for e in column_title if e.isalnum()) + " VARCHAR(200),\n"
+    schema_sql = schema_sql[:-2]
+    schema_sql += ");\n"
+    return schema_sql
 
 url = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.csv"
 
@@ -296,9 +317,11 @@ if file_exists:
     if md5('./ec2_prices.csv') == md5_remote:
         print("You already have the latest csv!")
     else:
-        download_csv()
+        download_csv(url)
 else:
-    download_csv()
+    download_csv(url)
+
+ec2_schema = parse_csv_schema()
 
 db = MySQLdb.connect(host="localhost",
                       user="pricer",
@@ -314,6 +337,11 @@ FIELDS TERMINATED BY ','
 LINES TERMINATED BY '\n'
 IGNORE 6 LINES; """
 
+print "Dropping existing table ec2_prices"
+cursor.execute(""" DROP TABLE ec2_prices; """)
+print "Recreating table..."
+cursor.execute(ec2_schema)
+print "Loading csv data..."
 cursor.execute(Query)
 db.commit()
 cursor.close()
