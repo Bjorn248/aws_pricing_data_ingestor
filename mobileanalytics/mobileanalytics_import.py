@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 import os
+import sys
 import requests
 import hashlib
 import MySQLdb
@@ -304,11 +305,11 @@ def download_csv(targetCSV):
     print("Downloading CSV...")
     response = requests.get(targetCSV, stream=True)
 
-    with open('./ec2_prices.csv', 'wb') as f:
+    with open('./mobileanalytics_prices.csv', 'wb') as f:
         f.write(response.content)
 
 def parse_csv_schema():
-    with open('./ec2_prices.csv', 'rb') as f:
+    with open('./mobileanalytics_prices.csv', 'rb') as f:
         reader = csv.reader(f)
         for row in reader:
             if row[0] == "SKU":
@@ -317,7 +318,7 @@ def parse_csv_schema():
 
 def generate_schema_from_row(row):
     print "Generating SQL Schema from CSV..."
-    schema_sql = "create table ec2_prices(\n"
+    schema_sql = "create table mobileanalytics_prices(\n"
     for column_title in row:
         if column_title in column_titles:
             schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
@@ -327,21 +328,21 @@ def generate_schema_from_row(row):
     schema_sql += ");\n"
     return schema_sql
 
-url = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.csv"
+url = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/mobileanalytics/current/index.csv"
 
-file_exists = os.path.isfile('./ec2_prices.csv')
+file_exists = os.path.isfile('./mobileanalytics_prices.csv')
 
 if file_exists:
     resp = requests.head(url)
     md5_remote = resp.headers['etag'][1:-1]
-    if md5('./ec2_prices.csv') == md5_remote:
+    if md5('./mobileanalytics_prices.csv') == md5_remote:
         print("You already have the latest csv!")
     else:
         download_csv(url)
 else:
     download_csv(url)
 
-ec2_schema = parse_csv_schema()
+mobileanalytics_schema = parse_csv_schema()
 
 db = MySQLdb.connect(host=mariadb_host,
                       user=mariadb_user,
@@ -350,17 +351,20 @@ db = MySQLdb.connect(host=mariadb_host,
                       local_infile=1)
 
 cursor = db.cursor()
-Query = """ LOAD DATA LOCAL INFILE './ec2_prices.csv'
-INTO TABLE ec2_prices
+Query = """ LOAD DATA LOCAL INFILE './mobileanalytics_prices.csv'
+INTO TABLE mobileanalytics_prices
 FIELDS TERMINATED BY ','
     ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 6 LINES; """
 
-print "Dropping existing table ec2_prices"
-cursor.execute(""" DROP TABLE ec2_prices; """)
+print "Checking to see if table mobileanalytics_prices exists"
+cursor.execute(""" SELECT * FROM information_schema.tables WHERE table_schema = 'aws_prices' AND table_name = 'mobileanalytics_prices' LIMIT 1; """)
+if cursor.fetchone() is not None:
+    print "Dropping existing table mobileanalytics_prices"
+    cursor.execute(""" DROP TABLE mobileanalytics_prices; """)
 print "Recreating table..."
-cursor.execute(ec2_schema)
+cursor.execute(mobileanalytics_schema)
 print "Loading csv data..."
 cursor.execute(Query)
 db.commit()
