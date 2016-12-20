@@ -11,4 +11,4 @@ MARIADB_DB | The DB name to connect to (e.g. aws_prices)
 
 ## Instructions
 To run this script, make sure you have all environment variables set and have
-a target MariaDB database running. Then, simply run the script using `pricing_import.py`.
+a target MariaDB database running. Then, simply run the script using `./pricing_import.py`.
