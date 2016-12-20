@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 
 import os
-import sys
 import requests
 import hashlib
 from multiprocessing import Pool
