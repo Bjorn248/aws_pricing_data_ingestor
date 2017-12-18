@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 """
 For downloading data from the AWS pricing API and importing into mysql/mariadb
 """
