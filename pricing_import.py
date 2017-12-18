@@ -327,7 +327,7 @@ def load_column_titles():
         },
         "Group": {
             "name": "AWSGroup",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(300)"
         },
         "Group Description": {
             "name": "AWSGroupDescription",
