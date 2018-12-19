@@ -10,8 +10,12 @@ MARIADB_PASSWORD | The password with which to authenticate to MariaDB
 MARIADB_DB | The DB name to connect to (e.g. aws_prices)
 
 ## Instructions
+This project relies on [pipenv](https://pipenv.readthedocs.io/en/latest/)
+
+To install dependencies run `pipenv sync`
+
 To run this script, make sure you have all environment variables set and have
-a target MariaDB database running. Then, simply run the script using `./pricing_import.py`.
+a target MariaDB database running. Then, simply run the script using `pipenv run python pricing_import.py`.
 
 ## How it works
 This pulls all the CSV files directly from the [AWS Pricing List API](https://aws.amazon.com/blogs/aws/new-aws-price-list-api/)
