@@ -303,15 +303,12 @@ def md5(file):
 def download_file(targetURL, filename):
     print("Downloading file from " + targetURL + "...\n")
     response = requests.get(targetURL, stream=True)
-    # TODO Stop saving files to disk, iterate files into CSV
-    # variables that get loaded into the DB
-    # end goal is to limit memory usage to 512MB and store nothing to disk
 
     with open(filename, 'wb') as f:
         f.write(response.content)
 
 def parse_csv_schema(filename, table_name):
-    with open(filename, 'rb') as f:
+    with open(filename, 'r') as f:
         reader = csv.reader(f)
         for row in reader:
             if row[0] == "SKU":
@@ -319,7 +316,7 @@ def parse_csv_schema(filename, table_name):
                 break
 
 def generate_schema_from_row(row, table_name):
-    print "Generating SQL Schema from CSV..."
+    print("Generating SQL Schema from CSV...")
     schema_sql = "create table " + table_name + "(\n"
     for column_title in row:
         if column_title in column_titles:
@@ -331,6 +328,9 @@ def generate_schema_from_row(row, table_name):
     return schema_sql
 
 def download_offer_file(offer_code_url):
+    # TODO Stop saving files to disk, iterate files into CSV
+    # variables that get loaded into the DB
+    # end goal is to limit memory usage to 512MB and store nothing to disk
 
     offer_code = offer_code_url.split('/')[4]
 
@@ -377,14 +377,14 @@ def import_csv_into_mariadb(filename):
     LINES TERMINATED BY '\n'
     IGNORE 6 LINES; """
 
-    print "Checking to see if table " + table_name + " exists..."
+    print("Checking to see if table " + table_name + " exists...")
     cursor.execute("SELECT * FROM information_schema.tables WHERE table_schema = '" + mariadb_db + "' AND table_name = '" + table_name + "' LIMIT 1;")
     if cursor.fetchone() is not None:
-        print "Dropping existing table " + table_name
+        print("Dropping existing table " + table_name)
         cursor.execute("DROP TABLE " + table_name + ";")
-    print "Recreating table..."
+    print("Recreating table...")
     cursor.execute(schema)
-    print "Loading csv data..."
+    print("Loading csv data...")
     cursor.execute(load_data)
     db.commit()
     cursor.close()
@@ -411,7 +411,7 @@ with open(offer_index_filename) as json_data:
 filenames = []
 urls = []
 number_of_threads = 0
-for offer, offer_info in offer_index['offers'].iteritems():
+for offer, offer_info in offer_index['offers'].items():
     number_of_threads += 1
     filenames.append(offer + ".csv")
     urls.append(offer_info['currentVersionUrl'])
