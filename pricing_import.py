@@ -1,3 +1,4 @@
+import io
 import os
 import requests
 import hashlib
@@ -332,18 +333,40 @@ def generate_schema_from_row(row, table_name):
     return schema_sql
 
 
-def download_offer_file(offer_code_url):
+def process_offer(offer_code_url):
+
     # TODO Stop saving files to disk, iterate files into CSV
     # variables that get loaded into the DB
     # end goal is to limit memory usage to 512MB and store nothing to disk
 
     offer_code = offer_code_url.split('/')[4]
 
+    print("Processing Offer" + offer_code)
+
     base_url = "https://pricing.us-east-1.amazonaws.com"
 
     offer_code_url = offer_code_url[:-5] + ".csv"
 
     url = base_url + offer_code_url
+
+    # Init in-memory text stream to store our CSV Chunks
+    csv_part = io.StringIO("")
+
+    print("Downloading chunks of " + url + "...\n")
+    response = requests.get(url, stream=True)
+
+    chunk_counter = 0
+    csv_header = ""
+
+    # 256MB Chunks
+    for chunk in response.iter_content(chunk_size=268435456):
+        csv_part.write(chunk)
+        if chunk_counter == 0:
+            reader = csv.reader(csv_part)
+            for row in reader:
+                if row[0] == "SKU":
+                    csv_header = row
+
 
     local_filename = "/tmp/" + offer_code + ".csv"
 
@@ -424,7 +447,7 @@ for offer, offer_info in offer_index['offers'].items():
     urls.append(offer_info['currentVersionUrl'])
 
 for url in urls:
-    download_offer_file(url)
+    process_offer(url)
 
 for filename in filenames:
     import_csv_into_mariadb(filename)
