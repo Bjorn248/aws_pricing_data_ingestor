@@ -293,12 +293,14 @@ column_titles = {
      }
 }
 
+
 def md5(file):
     hash_md5 = hashlib.md5()
     with open(file, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
 
 def download_file(targetURL, filename):
     print("Downloading file from " + targetURL + "...\n")
@@ -307,6 +309,7 @@ def download_file(targetURL, filename):
     with open(filename, 'wb') as f:
         f.write(response.content)
 
+
 def parse_csv_schema(filename, table_name):
     with open(filename, 'r') as f:
         reader = csv.reader(f)
@@ -314,6 +317,7 @@ def parse_csv_schema(filename, table_name):
             if row[0] == "SKU":
                 return generate_schema_from_row(row, table_name)
                 break
+
 
 def generate_schema_from_row(row, table_name):
     print("Generating SQL Schema from CSV...")
@@ -326,6 +330,7 @@ def generate_schema_from_row(row, table_name):
     schema_sql = schema_sql[:-2]
     schema_sql += ");\n"
     return schema_sql
+
 
 def download_offer_file(offer_code_url):
     # TODO Stop saving files to disk, iterate files into CSV
@@ -356,6 +361,7 @@ def download_offer_file(offer_code_url):
 
     file_exists = os.path.isfile(local_filename)
 
+
 def import_csv_into_mariadb(filename):
 
     table_name = filename[:-4]
@@ -365,10 +371,10 @@ def import_csv_into_mariadb(filename):
     schema = parse_csv_schema(filename, table_name)
 
     db = pymysql.connect(host=mariadb_host,
-                          user=mariadb_user,
-                          passwd=mariadb_password,
-                          db=mariadb_db,
-                          local_infile=1)
+                         user=mariadb_user,
+                         passwd=mariadb_password,
+                         db=mariadb_db,
+                         local_infile=1)
 
     cursor = db.cursor()
     load_data = "LOAD DATA LOCAL INFILE '" + filename + "' INTO TABLE " + table_name
@@ -388,6 +394,7 @@ def import_csv_into_mariadb(filename):
     cursor.execute(load_data)
     db.commit()
     cursor.close()
+
 
 offer_index_filename = "/tmp/offer_index.json"
 
