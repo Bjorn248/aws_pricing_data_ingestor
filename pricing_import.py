@@ -341,7 +341,7 @@ def process_offer(offer_code_url):
 
     offer_code = offer_code_url.split('/')[4]
 
-    print("Processing Offer" + offer_code)
+    print("Processing Offer " + offer_code)
 
     base_url = "https://pricing.us-east-1.amazonaws.com"
 
@@ -355,18 +355,19 @@ def process_offer(offer_code_url):
     print("Downloading chunks of " + url + "...\n")
     response = requests.get(url, stream=True)
 
-    chunk_counter = 0
     csv_header = ""
 
     # 256MB Chunks
-    for chunk in response.iter_content(chunk_size=268435456):
-        csv_part.write(chunk)
-        if chunk_counter == 0:
-            reader = csv.reader(csv_part)
-            for row in reader:
-                if row[0] == "SKU":
-                    csv_header = row
+    for line in response.iter_lines(chunk_size=268435456):
+        decoded_line = line.decode("utf-8")
+        csv_part.write(decoded_line)
+        if decoded_line[:5] == '"SKU"':
+            csv_header = decoded_line
+            print(csv_header)
 
+    print(csv_part.getvalue())
+    csv_part.close()
+    raise SystemExit
 
     local_filename = "/tmp/" + offer_code + ".csv"
 
