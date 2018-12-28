@@ -357,17 +357,59 @@ def process_offer(offer_code_url):
 
     csv_header = ""
 
-    # 256MB Chunks
-    for line in response.iter_lines(chunk_size=268435456):
+    # 512 byte Chunks
+    # The plan will be to count the chunks until they exceed a certain
+    # threshold
+    # Then store them to a file and ensure it is a valid CSV
+    # Then load the CSV into the DB, then use the CSV header to
+    # begin a new file and resume reading
+    # the file from the URL
+
+    total_written = 0
+
+    temp_csv = open("/tmp/working_copy.csv", "w+b")
+    for line in response.iter_content(chunk_size=512):
         decoded_line = line.decode("utf-8")
-        csv_part.write(decoded_line)
+        written = temp_csv.write(line)
+
+        total_written = total_written + written
+        position = 0
+
+        truncated_text = ""
+
+        # Limit filesize to 32KB
+        if total_written > 32768:
+            # Find first newline from end of file
+            while True:
+                temp_csv.seek(-position, 2)
+                # Read one character at a time
+                char = temp_csv.read(1)
+                print(char)
+                if char.decode("utf-8") == '\n':
+                    print("FOUND A NEWLINE, SAVING")
+                    truncated_text = temp_csv.read()
+
+                    # Move 1 character forward, we want to retain the newline
+                    temp_csv.seek(-position + 1, 2)
+                    temp_csv.truncate()
+                    print(truncated_text)
+                    # This should probably be broken into its own function
+                    # that returns the truncated text
+                    # OR it should call the function that loads the CSVs
+                    # into the DB
+                    raise SystemExit
+
+                position += 1
+
+        print(total_written)
+        print("=====")
+        print(decoded_line)
         if decoded_line[:5] == '"SKU"':
             csv_header = decoded_line
             print(csv_header)
 
-    print(csv_part.getvalue())
+    # print(csv_part.getvalue())
     csv_part.close()
-    raise SystemExit
 
     local_filename = "/tmp/" + offer_code + ".csv"
 
