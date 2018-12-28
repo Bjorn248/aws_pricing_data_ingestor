@@ -366,6 +366,7 @@ def process_offer(offer_code_url):
     # the file from the URL
 
     total_written = 0
+    truncated_text = ""
 
     temp_csv = open("/tmp/working_copy.csv", "w+b")
     for line in response.iter_content(chunk_size=512):
@@ -375,10 +376,9 @@ def process_offer(offer_code_url):
         total_written = total_written + written
         position = 0
 
-        truncated_text = ""
-
         # Limit filesize to 32KB
         if total_written > 32768:
+            total_written = 0
             # Find first newline from end of file
             while True:
                 temp_csv.seek(-position, 2)
@@ -404,6 +404,8 @@ def process_offer(offer_code_url):
         print(total_written)
         print("=====")
         print(decoded_line)
+        # We need to move this into the total written > conditional
+        # And save the header along with the truncated text for the next file
         if decoded_line[:5] == '"SKU"':
             csv_header = decoded_line
             print(csv_header)
