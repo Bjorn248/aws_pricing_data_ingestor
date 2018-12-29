@@ -365,6 +365,7 @@ def process_offer(offer_code_url):
     # begin a new file and resume reading
     # the file from the URL
 
+    file_number = 0
     total_written = 0
     truncated_text = ""
 
@@ -379,20 +380,31 @@ def process_offer(offer_code_url):
         # Limit filesize to 32KB
         if total_written > 32768:
             total_written = 0
+            file_number += 1
+
+            # get CSV header
+            if file_number == 1:
+                # goto the beginning of the file
+                temp_csv.seek(0,0)
+                while True:
+                    l = temp_csv.readline()
+                    decoded_l = l.decode("utf-8")
+                    if decoded_l[:5] == '"SKU"':
+                        csv_header = decoded_l
+                        break
+
             # Find first newline from end of file
             while True:
+                # goto the last character of the file
                 temp_csv.seek(-position, 2)
                 # Read one character at a time
                 char = temp_csv.read(1)
-                print(char)
                 if char.decode("utf-8") == '\n':
-                    print("FOUND A NEWLINE, SAVING")
                     truncated_text = temp_csv.read()
 
                     # Move 1 character forward, we want to retain the newline
                     temp_csv.seek(-position + 1, 2)
                     temp_csv.truncate()
-                    print(truncated_text)
                     # This should probably be broken into its own function
                     # that returns the truncated text
                     # OR it should call the function that loads the CSVs
@@ -401,16 +413,9 @@ def process_offer(offer_code_url):
 
                 position += 1
 
-        print(total_written)
-        print("=====")
-        print(decoded_line)
         # We need to move this into the total written > conditional
         # And save the header along with the truncated text for the next file
-        if decoded_line[:5] == '"SKU"':
-            csv_header = decoded_line
-            print(csv_header)
 
-    # print(csv_part.getvalue())
     csv_part.close()
 
     local_filename = "/tmp/" + offer_code + ".csv"
