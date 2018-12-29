@@ -1,4 +1,3 @@
-import io
 import os
 import requests
 import hashlib
@@ -313,20 +312,24 @@ def download_file(targetURL, filename):
 
 def parse_csv_schema(filename, table_name):
     with open(filename, 'r') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if row[0] == "SKU":
-                return generate_schema_from_row(row, table_name)
-                break
+        for l in f:
+            if l[:5] == '"SKU"':
+                schema = generate_schema_from_row(l.split(','), table_name)
+                print(schema)
+                return schema
 
 
 def generate_schema_from_row(row, table_name):
     print("Generating SQL Schema from CSV...")
     schema_sql = "create table " + table_name + "(\n"
+    # figure out why this dict lookup is broken in python 3
+    print(column_titles)
     for column_title in row:
         if column_title in column_titles:
+            print('found')
             schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
         else:
+            print('not found')
             schema_sql += ''.join(e for e in column_title if e.isalnum()) + " VARCHAR(200),\n"
     schema_sql = schema_sql[:-2]
     schema_sql += ");\n"
@@ -349,52 +352,56 @@ def process_offer(offer_code_url):
 
     url = base_url + offer_code_url
 
-    # Init in-memory text stream to store our CSV Chunks
-    csv_part = io.StringIO("")
-
     print("Downloading chunks of " + url + "...\n")
     response = requests.get(url, stream=True)
 
-    csv_header = ""
+    resp = requests.head(url)
+    file_size = resp.headers['Content-Length']
 
-    # 512 byte Chunks
-    # The plan will be to count the chunks until they exceed a certain
-    # threshold
-    # Then store them to a file and ensure it is a valid CSV
-    # Then load the CSV into the DB, then use the CSV header to
-    # begin a new file and resume reading
-    # the file from the URL
+    csv_header = b''
 
     file_number = 0
     total_written = 0
+    file_written = 0
     truncated_text = ""
 
-    temp_csv = open("/tmp/working_copy.csv", "w+b")
-    for line in response.iter_content(chunk_size=512):
-        decoded_line = line.decode("utf-8")
-        written = temp_csv.write(line)
+    filepath = "/tmp/working_copy.csv"
 
+    temp_csv = open(filepath, "w+b")
+    for chunk in response.iter_content(chunk_size=8192):
+        if file_number >= 1:
+            temp_csv.write(csv_header)
+            temp_csv.write(truncated_text)
+
+        written = temp_csv.write(chunk)
         total_written = total_written + written
+
+        csv_header_found = False
+        truncated_string_found = False
+        drop_database = False
+
+        file_written = file_written + written
         position = 0
 
-        # Limit filesize to 32KB
-        if total_written > 32768:
-            total_written = 0
+        # Limit filesize to 64MB
+        if file_written > 67108864:
+            file_written = 0
             file_number += 1
 
             # get CSV header
             if file_number == 1:
+                drop_database = True
                 # goto the beginning of the file
                 temp_csv.seek(0,0)
-                while True:
+                while csv_header_found == False:
                     l = temp_csv.readline()
                     decoded_l = l.decode("utf-8")
                     if decoded_l[:5] == '"SKU"':
-                        csv_header = decoded_l
-                        break
+                        csv_header = l
+                        csv_header_found = True
 
             # Find first newline from end of file
-            while True:
+            while truncated_string_found == False:
                 # goto the last character of the file
                 temp_csv.seek(-position, 2)
                 # Read one character at a time
@@ -405,43 +412,22 @@ def process_offer(offer_code_url):
                     # Move 1 character forward, we want to retain the newline
                     temp_csv.seek(-position + 1, 2)
                     temp_csv.truncate()
-                    # This should probably be broken into its own function
-                    # that returns the truncated text
-                    # OR it should call the function that loads the CSVs
-                    # into the DB
-                    raise SystemExit
+                    import_csv_into_mariadb(filepath, offer_code, drop_database)
+
+                    # Empty file
+                    temp_csv.seek(0)
+                    temp_csv.truncate()
+                    truncated_string_found = True
 
                 position += 1
 
-        # We need to move this into the total written > conditional
-        # And save the header along with the truncated text for the next file
+        # The whole file is less than 64MB
+        if int(total_written) == int(file_size):
+            import_csv_into_mariadb(filepath, offer_code, True)
+            temp_csv.seek(0)
+            temp_csv.truncate()
 
-    csv_part.close()
-
-    local_filename = "/tmp/" + offer_code + ".csv"
-
-    file_exists = os.path.isfile(local_filename)
-
-    if file_exists:
-        resp = requests.head(url)
-        md5_remote = resp.headers['etag'][1:-1]
-        if md5(local_filename) == md5_remote:
-            print("You already have the latest csv for " + offer_code + "!")
-        else:
-            download_file(url, local_filename)
-    else:
-        download_file(url, local_filename)
-
-    file_exists = os.path.isfile(local_filename)
-
-
-def import_csv_into_mariadb(filename):
-
-    table_name = filename[:-4]
-
-    filename = "/tmp/" + filename
-
-    schema = parse_csv_schema(filename, table_name)
+def import_csv_into_mariadb(filename, table_name, drop_database):
 
     db = pymysql.connect(host=mariadb_host,
                          user=mariadb_user,
@@ -456,14 +442,22 @@ def import_csv_into_mariadb(filename):
     LINES TERMINATED BY '\n'
     IGNORE 6 LINES; """
 
+    print(filename)
     print("Checking to see if table " + table_name + " exists...")
     cursor.execute("SELECT * FROM information_schema.tables WHERE table_schema = '" + mariadb_db + "' AND table_name = '" + table_name + "' LIMIT 1;")
     if cursor.fetchone() is not None:
-        print("Dropping existing table " + table_name)
-        cursor.execute("DROP TABLE " + table_name + ";")
-    print("Recreating table...")
-    cursor.execute(schema)
+        if drop_database == True:
+            schema = parse_csv_schema(filename, table_name)
+            print("Dropping existing table " + table_name)
+            cursor.execute("DROP TABLE " + table_name + ";")
+            print("Recreating table...")
+            cursor.execute(schema)
+    else:
+        schema = parse_csv_schema(filename, table_name)
+        print("Creating table...")
+        cursor.execute(schema)
     print("Loading csv data...")
+    print()
     cursor.execute(load_data)
     db.commit()
     cursor.close()
@@ -498,6 +492,3 @@ for offer, offer_info in offer_index['offers'].items():
 
 for url in urls:
     process_offer(url)
-
-for filename in filenames:
-    import_csv_into_mariadb(filename)
