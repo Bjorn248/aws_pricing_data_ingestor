@@ -111,6 +111,14 @@ column_titles = {
         "name": "InstanceFamily",
         "type": "VARCHAR(50)"
     },
+    "Instance Type Family": {
+        "name": "InstanceTypeFamily",
+        "type": "VARCHAR(50)"
+    },
+    "Normalization Size Factor": {
+        "name": "NormSizeFactor",
+        "type": "VARCHAR(50)"
+    },
     "vCPU": {
         "name": "vCPU",
         "type": "VARCHAR(10)"
@@ -310,33 +318,31 @@ def download_file(targetURL, filename):
         f.write(response.content)
 
 
-def parse_csv_schema(filename, table_name):
-    with open(filename, 'r') as f:
-        for l in f:
-            if l[:5] == '"SKU"':
-                schema = generate_schema_from_row(l.split(','), table_name)
-                print(schema)
-                return schema
+def parse_csv_schema(file_handle, table_name):
+    file_handle.seek(0,0)
+    for l in file_handle:
+        l = l.decode("utf-8")
+        if l[:5] == '"SKU"':
+            schema = generate_schema_from_row(l.split(','), table_name)
+            return schema
 
 
 def generate_schema_from_row(row, table_name):
     print("Generating SQL Schema from CSV...")
     schema_sql = "create table " + table_name + "(\n"
     # figure out why this dict lookup is broken in python 3
-    print(column_titles)
     for column_title in row:
+        column_title = column_title.strip('\"')
         if column_title in column_titles:
-            print('found')
             schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
         else:
-            print('not found')
             schema_sql += ''.join(e for e in column_title if e.isalnum()) + " VARCHAR(200),\n"
     schema_sql = schema_sql[:-2]
     schema_sql += ");\n"
     return schema_sql
 
 
-def process_offer(offer_code_url):
+def process_offer(offer_code_url, csv_file):
 
     # TODO Stop saving files to disk, iterate files into CSV
     # variables that get loaded into the DB
@@ -352,7 +358,7 @@ def process_offer(offer_code_url):
 
     url = base_url + offer_code_url
 
-    print("Downloading chunks of " + url + "...\n")
+    print("Downloading chunks of " + url + "...")
     response = requests.get(url, stream=True)
 
     resp = requests.head(url)
@@ -364,16 +370,23 @@ def process_offer(offer_code_url):
     total_written = 0
     file_written = 0
     truncated_text = ""
+    new_file = False
 
-    filepath = "/tmp/working_copy.csv"
+    # 4MB Chunks
+    for chunk in response.iter_content(chunk_size=4194304):
+        if new_file == True:
+            # Empty file
+            csv_file.seek(0)
+            csv_file.truncate()
 
-    temp_csv = open(filepath, "w+b")
-    for chunk in response.iter_content(chunk_size=8192):
-        if file_number >= 1:
-            temp_csv.write(csv_header)
-            temp_csv.write(truncated_text)
+            csv_file.write(csv_header)
+            csv_file.write(truncated_text)
+            new_file = False
 
-        written = temp_csv.write(chunk)
+        # Progress indicator
+        percent_done = round((int(total_written) / int(file_size)) * 100, 2)
+        print("Downloaded:", percent_done, "%")
+        written = csv_file.write(chunk)
         total_written = total_written + written
 
         csv_header_found = False
@@ -383,18 +396,22 @@ def process_offer(offer_code_url):
         file_written = file_written + written
         position = 0
 
-        # Limit filesize to 64MB
+        # Limit local filesize to 64MB
         if file_written > 67108864:
             file_written = 0
             file_number += 1
+            new_file = True
+
+            if int(total_written) == int(file_size):
+                print("Downloaded: 100 %")
 
             # get CSV header
             if file_number == 1:
                 drop_database = True
                 # goto the beginning of the file
-                temp_csv.seek(0,0)
+                csv_file.seek(0,0)
                 while csv_header_found == False:
-                    l = temp_csv.readline()
+                    l = csv_file.readline()
                     decoded_l = l.decode("utf-8")
                     if decoded_l[:5] == '"SKU"':
                         csv_header = l
@@ -403,31 +420,35 @@ def process_offer(offer_code_url):
             # Find first newline from end of file
             while truncated_string_found == False:
                 # goto the last character of the file
-                temp_csv.seek(-position, 2)
+                csv_file.seek(-position, 2)
                 # Read one character at a time
-                char = temp_csv.read(1)
+                char = csv_file.read(1)
                 if char.decode("utf-8") == '\n':
-                    truncated_text = temp_csv.read()
+                    truncated_text = csv_file.read()
 
                     # Move 1 character forward, we want to retain the newline
-                    temp_csv.seek(-position + 1, 2)
-                    temp_csv.truncate()
-                    import_csv_into_mariadb(filepath, offer_code, drop_database)
+                    csv_file.seek(-position + 1, 2)
+                    csv_file.truncate()
+                    import_csv_into_mariadb(filepath, offer_code, drop_database, csv_file)
 
                     # Empty file
-                    temp_csv.seek(0)
-                    temp_csv.truncate()
+                    csv_file.seek(0)
+                    csv_file.truncate()
                     truncated_string_found = True
 
                 position += 1
 
-        # The whole file is less than 64MB
         if int(total_written) == int(file_size):
-            import_csv_into_mariadb(filepath, offer_code, True)
-            temp_csv.seek(0)
-            temp_csv.truncate()
+            if file_number >= 1:
+                drop_db = False
+            else:
+                drop_db = True
+            print("Downloaded: 100 %")
+            import_csv_into_mariadb(filepath, offer_code, drop_db, csv_file)
+            csv_file.seek(0)
+            csv_file.truncate()
 
-def import_csv_into_mariadb(filename, table_name, drop_database):
+def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
 
     db = pymysql.connect(host=mariadb_host,
                          user=mariadb_user,
@@ -437,27 +458,33 @@ def import_csv_into_mariadb(filename, table_name, drop_database):
 
     cursor = db.cursor()
     load_data = "LOAD DATA LOCAL INFILE '" + filename + "' INTO TABLE " + table_name
-    load_data += """ FIELDS TERMINATED BY ','
-        ENCLOSED BY '"'
-    LINES TERMINATED BY '\n'
-    IGNORE 6 LINES; """
+    if drop_database == True:
+        load_data += """ FIELDS TERMINATED BY ','
+            ENCLOSED BY '"'
+        LINES TERMINATED BY '\n'
+        IGNORE 6 LINES; """
+    else:
+        load_data += """ FIELDS TERMINATED BY ','
+            ENCLOSED BY '"'
+        LINES TERMINATED BY '\n'
+        IGNORE 1 LINES; """
 
-    print(filename)
     print("Checking to see if table " + table_name + " exists...")
     cursor.execute("SELECT * FROM information_schema.tables WHERE table_schema = '" + mariadb_db + "' AND table_name = '" + table_name + "' LIMIT 1;")
     if cursor.fetchone() is not None:
         if drop_database == True:
-            schema = parse_csv_schema(filename, table_name)
+            schema = parse_csv_schema(csv_file, table_name)
             print("Dropping existing table " + table_name)
             cursor.execute("DROP TABLE " + table_name + ";")
             print("Recreating table...")
             cursor.execute(schema)
     else:
-        schema = parse_csv_schema(filename, table_name)
+        schema = parse_csv_schema(csv_file, table_name)
+        print(schema)
         print("Creating table...")
         cursor.execute(schema)
     print("Loading csv data...")
-    print()
+    print("\n")
     cursor.execute(load_data)
     db.commit()
     cursor.close()
@@ -490,5 +517,9 @@ for offer, offer_info in offer_index['offers'].items():
     filenames.append(offer + ".csv")
     urls.append(offer_info['currentVersionUrl'])
 
+filepath = "/tmp/working_copy.csv"
+
+csv_file_handle = open(filepath, "w+b")
+
 for url in urls:
-    process_offer(url)
+    process_offer(url, csv_file_handle)
