@@ -1,9 +1,8 @@
 import os
-import requests
 import hashlib
-import pymysql.cursors
-import csv
 import json
+import requests
+import pymysql.cursors
 
 
 if "MARIADB_HOST" in os.environ:
@@ -290,15 +289,15 @@ column_titles = {
     "Pre Installed S/W": {
         "name": "PreInstalledSW",
         "type": "VARCHAR(50)"
-     },
+    },
     "Processor Features": {
         "name": "ProcessorFeatures",
         "type": "VARCHAR(50)"
-     },
+    },
     "Sockets": {
         "name": "Sockets",
         "type": "VARCHAR(10)"
-     }
+    }
 }
 
 
@@ -330,7 +329,6 @@ def parse_csv_schema(file_handle, table_name):
 def generate_schema_from_row(row, table_name):
     print("Generating SQL Schema from CSV...")
     schema_sql = "create table " + table_name + "(\n"
-    # figure out why this dict lookup is broken in python 3
     for column_title in row:
         column_title = column_title.strip('\"')
         if column_title in column_titles:
@@ -343,10 +341,6 @@ def generate_schema_from_row(row, table_name):
 
 
 def process_offer(offer_code_url, csv_file):
-
-    # TODO Stop saving files to disk, iterate files into CSV
-    # variables that get loaded into the DB
-    # end goal is to limit memory usage to 512MB and store nothing to disk
 
     offer_code = offer_code_url.split('/')[4]
 

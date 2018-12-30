@@ -2,7 +2,6 @@ import os
 import requests
 import hashlib
 import pymysql.cursors
-import csv
 import json
 
 
@@ -292,15 +291,15 @@ def lambda_handler(event, context):
         "Pre Installed S/W": {
             "name": "PreInstalledSW",
             "type": "VARCHAR(50)"
-         },
+        },
         "Processor Features": {
             "name": "ProcessorFeatures",
             "type": "VARCHAR(50)"
-         },
+        },
         "Sockets": {
             "name": "Sockets",
             "type": "VARCHAR(10)"
-         }
+        }
     }
 
 
@@ -345,10 +344,6 @@ def lambda_handler(event, context):
 
 
     def process_offer(offer_code_url, csv_file):
-
-        # TODO Stop saving files to disk, iterate files into CSV
-        # variables that get loaded into the DB
-        # end goal is to limit memory usage to 512MB and store nothing to disk
 
         offer_code = offer_code_url.split('/')[4]
 
