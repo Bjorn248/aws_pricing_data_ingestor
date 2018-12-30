@@ -335,6 +335,8 @@ def generate_schema_from_row(row, table_name):
             schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
         else:
             schema_sql += ''.join(e for e in column_title if e.isalnum()) + " VARCHAR(200),\n"
+    # add below for md5 in database
+    # schema_sql += "MD5 VARCHAR(33),\n"
     schema_sql = schema_sql[:-2]
     schema_sql += ");\n"
     return schema_sql
