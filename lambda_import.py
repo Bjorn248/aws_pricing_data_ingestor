@@ -477,7 +477,6 @@ def lambda_handler(event, context):
                 cursor.execute(schema)
         else:
             schema = parse_csv_schema(csv_file, table_name)
-            print(schema)
             print("Creating table...")
             cursor.execute(schema)
         print("Loading csv data...")

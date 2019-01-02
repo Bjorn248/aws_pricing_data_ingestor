@@ -476,7 +476,6 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
             cursor.execute(schema)
     else:
         schema = parse_csv_schema(csv_file, table_name)
-        print(schema)
         print("Creating table...")
         cursor.execute(schema)
     print("Loading csv data...")
