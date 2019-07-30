@@ -292,7 +292,7 @@ column_titles = {
     },
     "Processor Features": {
         "name": "ProcessorFeatures",
-        "type": "VARCHAR(50)"
+        "type": "VARCHAR(200)"
     },
     "Sockets": {
         "name": "Sockets",

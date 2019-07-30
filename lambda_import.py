@@ -294,7 +294,7 @@ def lambda_handler(event, context):
         },
         "Processor Features": {
             "name": "ProcessorFeatures",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(200)"
         },
         "Sockets": {
             "name": "Sockets",
