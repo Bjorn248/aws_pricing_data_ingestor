@@ -221,7 +221,7 @@ column_titles = {
     },
     "usageType": {
         "name": "UsageType",
-        "type": "VARCHAR(50)"
+        "type": "VARCHAR(100)"
     },
     "operation": {
         "name": "Operation",
