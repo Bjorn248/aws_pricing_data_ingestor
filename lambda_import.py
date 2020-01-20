@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import hashlib
 import pymysql.cursors
@@ -302,14 +303,12 @@ def lambda_handler(event, context):
         }
     }
 
-
     def md5(file):
         hash_md5 = hashlib.md5()
         with open(file, 'rb') as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
-
 
     def download_file(targetURL, filename):
         print("Downloading file from " + targetURL + "...\n")
@@ -318,15 +317,13 @@ def lambda_handler(event, context):
         with open(filename, 'wb') as f:
             f.write(response.content)
 
-
     def parse_csv_schema(file_handle, table_name):
-        file_handle.seek(0,0)
+        file_handle.seek(0, 0)
         for l in file_handle:
             l = l.decode("utf-8")
             if l[:5] == '"SKU"':
                 schema = generate_schema_from_row(l.split(','), table_name)
                 return schema
-
 
     def generate_schema_from_row(row, table_name):
         print("Generating SQL Schema from CSV...")
@@ -337,11 +334,17 @@ def lambda_handler(event, context):
             if column_title in column_titles:
                 schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
             else:
-                schema_sql += ''.join(e for e in column_title if e.isalnum()) + " VARCHAR(200),\n"
+                schema_friendly_column_title = ""
+                for character in column_title:
+                    if re.match(r'[0-9A-Za-z\s]', character):
+                        if character == " ":
+                            character = "_"
+                        schema_friendly_column_title += character
+
+                schema_sql += schema_friendly_column_title + " VARCHAR(200),\n"
         schema_sql = schema_sql[:-2]
         schema_sql += ");\n"
         return schema_sql
-
 
     def process_offer(offer_code_url, csv_file):
 
@@ -371,7 +374,7 @@ def lambda_handler(event, context):
 
         # 4MB Chunks
         for chunk in response.iter_content(chunk_size=4194304):
-            if new_file == True:
+            if new_file is True:
                 # Empty file
                 csv_file.seek(0)
                 csv_file.truncate()
@@ -406,8 +409,8 @@ def lambda_handler(event, context):
                 if file_number == 1:
                     drop_database = True
                     # goto the beginning of the file
-                    csv_file.seek(0,0)
-                    while csv_header_found == False:
+                    csv_file.seek(0, 0)
+                    while csv_header_found is False:
                         l = csv_file.readline()
                         decoded_l = l.decode("utf-8")
                         if decoded_l[:5] == '"SKU"':
@@ -415,7 +418,7 @@ def lambda_handler(event, context):
                             csv_header_found = True
 
                 # Find first newline from end of file
-                while truncated_string_found == False:
+                while truncated_string_found is False:
                     # goto the last character of the file
                     csv_file.seek(-position, 2)
                     # Read one character at a time
@@ -455,7 +458,7 @@ def lambda_handler(event, context):
 
         cursor = db.cursor()
         load_data = "LOAD DATA LOCAL INFILE '" + filename + "' INTO TABLE " + table_name
-        if drop_database == True:
+        if drop_database is True:
             load_data += """ FIELDS TERMINATED BY ','
                 ENCLOSED BY '"'
             LINES TERMINATED BY '\n'
@@ -469,7 +472,7 @@ def lambda_handler(event, context):
         print("Checking to see if table " + table_name + " exists...")
         cursor.execute("SELECT * FROM information_schema.tables WHERE table_schema = '" + mariadb_db + "' AND table_name = '" + table_name + "' LIMIT 1;")
         if cursor.fetchone() is not None:
-            if drop_database == True:
+            if drop_database is True:
                 schema = parse_csv_schema(csv_file, table_name)
                 print("Dropping existing table " + table_name)
                 cursor.execute("DROP TABLE " + table_name + ";")
@@ -484,7 +487,6 @@ def lambda_handler(event, context):
         cursor.execute(load_data)
         db.commit()
         cursor.close()
-
 
     offer_index_filename = "/tmp/offer_index.json"
 

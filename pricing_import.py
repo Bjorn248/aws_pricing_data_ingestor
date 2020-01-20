@@ -1,4 +1,5 @@
 import os
+import re
 import hashlib
 import json
 import requests
@@ -318,7 +319,7 @@ def download_file(targetURL, filename):
 
 
 def parse_csv_schema(file_handle, table_name):
-    file_handle.seek(0,0)
+    file_handle.seek(0, 0)
     for l in file_handle:
         l = l.decode("utf-8")
         if l[:5] == '"SKU"':
@@ -334,7 +335,14 @@ def generate_schema_from_row(row, table_name):
         if column_title in column_titles:
             schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
         else:
-            schema_sql += ''.join(e for e in column_title if e.isalnum()) + " VARCHAR(200),\n"
+            schema_friendly_column_title = ""
+            for character in column_title:
+                if re.match(r'[0-9A-Za-z\s]', character):
+                    if character == " ":
+                        character = "_"
+                    schema_friendly_column_title += character
+
+            schema_sql += schema_friendly_column_title + " VARCHAR(200),\n"
     # add below for md5 in database
     # schema_sql += "MD5 VARCHAR(33),\n"
     schema_sql = schema_sql[:-2]
@@ -370,7 +378,7 @@ def process_offer(offer_code_url, csv_file):
 
     # 4MB Chunks
     for chunk in response.iter_content(chunk_size=4194304):
-        if new_file == True:
+        if new_file is True:
             # Empty file
             csv_file.seek(0)
             csv_file.truncate()
@@ -405,8 +413,8 @@ def process_offer(offer_code_url, csv_file):
             if file_number == 1:
                 drop_database = True
                 # goto the beginning of the file
-                csv_file.seek(0,0)
-                while csv_header_found == False:
+                csv_file.seek(0, 0)
+                while csv_header_found is False:
                     l = csv_file.readline()
                     decoded_l = l.decode("utf-8")
                     if decoded_l[:5] == '"SKU"':
@@ -414,7 +422,7 @@ def process_offer(offer_code_url, csv_file):
                         csv_header_found = True
 
             # Find first newline from end of file
-            while truncated_string_found == False:
+            while truncated_string_found is False:
                 # goto the last character of the file
                 csv_file.seek(-position, 2)
                 # Read one character at a time
@@ -444,6 +452,7 @@ def process_offer(offer_code_url, csv_file):
             csv_file.seek(0)
             csv_file.truncate()
 
+
 def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
 
     db = pymysql.connect(host=mariadb_host,
@@ -454,7 +463,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
 
     cursor = db.cursor()
     load_data = "LOAD DATA LOCAL INFILE '" + filename + "' INTO TABLE " + table_name
-    if drop_database == True:
+    if drop_database is True:
         load_data += """ FIELDS TERMINATED BY ','
             ENCLOSED BY '"'
         LINES TERMINATED BY '\n'
@@ -468,7 +477,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
     print("Checking to see if table " + table_name + " exists...")
     cursor.execute("SELECT * FROM information_schema.tables WHERE table_schema = '" + mariadb_db + "' AND table_name = '" + table_name + "' LIMIT 1;")
     if cursor.fetchone() is not None:
-        if drop_database == True:
+        if drop_database is True:
             schema = parse_csv_schema(csv_file, table_name)
             print("Dropping existing table " + table_name)
             cursor.execute("DROP TABLE " + table_name + ";")
