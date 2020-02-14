@@ -489,6 +489,9 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
         cursor.execute(schema)
     print("Loading csv data...")
     print("\n")
+    if table_name == "AmazonEC2":
+        print("Creating index on AmazonEC2 table")
+        cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location, InstanceType, Tenancy, OS, CapacityStatus, PreInstalledSW);")
     cursor.execute(load_data)
     db.commit()
     cursor.close()
