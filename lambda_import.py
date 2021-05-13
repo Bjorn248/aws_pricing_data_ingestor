@@ -151,7 +151,7 @@ def lambda_handler(event, context):
         },
         "Storage Media": {
             "name": "StorageMedia",
-            "type": "VARCHAR(15)"
+            "type": "VARCHAR(20)"
         },
         "Volume Type": {
             "name": "VolumeType",
@@ -187,7 +187,7 @@ def lambda_handler(event, context):
         },
         "Operating System": {
             "name": "OS",
-            "type": "VARCHAR(15)"
+            "type": "VARCHAR(40)"
         },
         "License Model": {
             "name": "LicenseModel",

@@ -149,7 +149,7 @@ column_titles = {
     },
     "Storage Media": {
         "name": "StorageMedia",
-        "type": "VARCHAR(15)"
+        "type": "VARCHAR(20)"
     },
     "Volume Type": {
         "name": "VolumeType",
@@ -185,7 +185,7 @@ column_titles = {
     },
     "Operating System": {
         "name": "OS",
-        "type": "VARCHAR(15)"
+        "type": "VARCHAR(40)"
     },
     "License Model": {
         "name": "LicenseModel",
