@@ -31,23 +31,23 @@ def lambda_handler(event, context):
     column_titles = {
         "SKU": {
             "name": "SKU",
-            "type": "VARCHAR(17)"
+            "type": "CHAR(16) NOT NULL"
         },
         "OfferTermCode": {
             "name": "OfferTermCode",
-            "type": "VARCHAR(10)"
+            "type": "CHAR(10) NOT NULL"
         },
         "RateCode": {
             "name": "RateCode",
-            "type": "VARCHAR(38)"
+            "type": "CHAR(38) NOT NULL"
         },
         "TermType": {
             "name": "TermType",
-            "type": "VARCHAR(16)"
+            "type": "ENUM('OnDemand','Reserved') NOT NULL"
         },
         "PriceDescription": {
             "name": "PriceDescription",
-            "type": "VARCHAR(200)"
+            "type": "VARCHAR(119) NOT NULL"
         },
         "EffectiveDate": {
             "name": "EffectiveDate",
@@ -55,15 +55,15 @@ def lambda_handler(event, context):
         },
         "StartingRange": {
             "name": "StartingRange",
-            "type": "VARCHAR(200)"
+            "type": "VARCHAR(6) NOT NULL"
         },
         "EndingRange": {
             "name": "EndingRange",
-            "type": "VARCHAR(200)"
+            "type": "VARCHAR(6) NOT NULL"
         },
         "Unit": {
             "name": "Unit",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(16)"
         },
         "PricePerUnit": {
             "name": "PricePerUnit",
@@ -75,19 +75,19 @@ def lambda_handler(event, context):
         },
         "LeaseContractLength": {
             "name": "LeaseContractLength",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(5)"
         },
         "PurchaseOption": {
             "name": "PurchaseOption",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(15)"
         },
         "OfferingClass": {
             "name": "OfferingClass",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(11)"
         },
         "Product Family": {
             "name": "ProductFamily",
-            "type": "VARCHAR(200)"
+            "type": "VARCHAR(30)"
         },
         "serviceCode": {
             "name": "ServiceCode",
@@ -99,19 +99,19 @@ def lambda_handler(event, context):
         },
         "Location Type": {
             "name": "LocationType",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(20)"
         },
         "Instance Type": {
             "name": "InstanceType",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(20)"
         },
         "Current Generation": {
             "name": "CurrentGeneration",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(3)"
         },
         "Instance Family": {
             "name": "InstanceFamily",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(32)"
         },
         "Instance Type Family": {
             "name": "InstanceTypeFamily",
@@ -123,7 +123,7 @@ def lambda_handler(event, context):
         },
         "vCPU": {
             "name": "vCPU",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(3)"
         },
         "Physical Processor": {
             "name": "PhysicalProcessor",
@@ -131,19 +131,19 @@ def lambda_handler(event, context):
         },
         "Clock Speed": {
             "name": "ClockSpeed",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(15)"
         },
         "Memory": {
             "name": "Memory",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(9)"
         },
         "Storage": {
             "name": "Storage",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(20)"
         },
         "Network Performance": {
             "name": "NetworkPerformance",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(16)"
         },
         "Processor Architecture": {
             "name": "ProcessorArchitecture",
@@ -155,7 +155,7 @@ def lambda_handler(event, context):
         },
         "Volume Type": {
             "name": "VolumeType",
-            "type": "VARCHAR(100)"
+            "type": "VARCHAR(25)"
         },
         "Max Volume Size": {
             "name": "MaxVolumeSize",
@@ -163,27 +163,27 @@ def lambda_handler(event, context):
         },
         "Max IOPS/volume": {
             "name": "MaxIOPSVolume",
-            "type": "VARCHAR(40)"
+            "type": "VARCHAR(30)"
         },
         "Max IOPS Burst Performance": {
             "name": "MaxIOPSBurstPerformance",
-            "type": "VARCHAR(40)"
+            "type": "VARCHAR(30)"
         },
         "Max throughput/volume": {
             "name": "MaxThroughputPerVolume",
-            "type": "VARCHAR(30)"
+            "type": "VARCHAR(15) NOT NULL"
         },
         "Provisioned": {
             "name": "Provisioned",
-            "type": "VARCHAR(10)"
+            "type": "ENUM('','No','Yes') NOT NULL"
         },
         "Tenancy": {
             "name": "Tenancy",
-            "type": "VARCHAR(20)"
+            "type": "VARCHAR(10)"
         },
         "EBS Optimized": {
             "name": "EBSOptimized",
-            "type": "VARCHAR(10)"
+            "type": "ENUM('','Yes') NOT NULL"
         },
         "Operating System": {
             "name": "OS",
@@ -191,43 +191,43 @@ def lambda_handler(event, context):
         },
         "License Model": {
             "name": "LicenseModel",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(30)"
         },
         "Group": {
             "name": "AWSGroup",
-            "type": "VARCHAR(200)"
+            "type": "VARCHAR(30)"
         },
         "Group Description": {
             "name": "AWSGroupDescription",
-            "type": "VARCHAR(500)"
+            "type": "VARCHAR(100)"
         },
         "Transfer Type": {
             "name": "TransferType",
-            "type": "VARCHAR(200)"
+            "type": "VARCHAR(30)"
         },
         "From Location": {
             "name": "FromLocation",
-            "type": "VARCHAR(200)"
+            "type": "VARCHAR(30)"
         },
         "From Location Type": {
             "name": "FromLocationType",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(15)"
         },
         "To Location": {
             "name": "ToLocation",
-            "type": "VARCHAR(200)"
+            "type": "VARCHAR(30)"
         },
         "To Location Type": {
             "name": "ToLocationType",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(15)"
         },
         "usageType": {
             "name": "UsageType",
-            "type": "VARCHAR(100)"
+            "type": "VARCHAR(50)"
         },
         "operation": {
             "name": "Operation",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(30)"
         },
         "Comments": {
             "name": "Comments",
@@ -239,59 +239,59 @@ def lambda_handler(event, context):
         },
         "Enhanced Networking Supported": {
             "name": "EnhancedNetworkingSupported",
-            "type": "VARCHAR(10)"
+            "type": "ENUM('','No','Yes') NOT NULL"
         },
         "GPU": {
             "name": "GPU",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(2)"
         },
         "Instance Capacity - 10xlarge": {
             "name": "InstanceCapacity10xLarge",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(2)"
         },
         "Instance Capacity - 2xlarge": {
             "name": "InstanceCapacity2xLarge",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(2)"
         },
         "Instance Capacity - 4xlarge": {
             "name": "InstanceCapacity4xLarge",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(2)"
         },
         "Instance Capacity - 8xlarge": {
             "name": "InstanceCapacity8xLarge",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(2)"
         },
         "Instance Capacity - large": {
             "name": "InstanceCapacityLarge",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(2)"
         },
         "Instance Capacity - medium": {
             "name": "InstanceCapacityMedium",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(2)"
         },
         "Instance Capacity - xlarge": {
             "name": "InstanceCapacityxLarge",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(2)"
         },
         "Intel AVX Available": {
             "name": "IntelAVXAvailable",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(4)"
         },
         "Intel AVX2 Available": {
             "name": "IntelAVX2Available",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(4)"
         },
         "Intel Turbo Available": {
             "name": "IntelTurboAvailable",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(4)"
         },
         "Physical Cores": {
             "name": "PhysicalCores",
-            "type": "VARCHAR(10)"
+            "type": "VARCHAR(3)"
         },
         "Pre Installed S/W": {
             "name": "PreInstalledSW",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(10)"
         },
         "Processor Features": {
             "name": "ProcessorFeatures",
