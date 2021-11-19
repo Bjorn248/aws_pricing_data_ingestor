@@ -45,7 +45,7 @@ column_titles = {
     },
     "PriceDescription": {
         "name": "PriceDescription",
-        "type": "VARCHAR(119) NOT NULL"
+        "type": "VARCHAR(140) NOT NULL"
     },
     "EffectiveDate": {
         "name": "EffectiveDate",
@@ -53,15 +53,15 @@ column_titles = {
     },
     "StartingRange": {
         "name": "StartingRange",
-        "type": "VARCHAR(6) NOT NULL"
+        "type": "VARCHAR(15)"
     },
     "EndingRange": {
         "name": "EndingRange",
-        "type": "VARCHAR(6) NOT NULL"
+        "type": "VARCHAR(15)"
     },
     "Unit": {
         "name": "Unit",
-        "type": "VARCHAR(16)"
+        "type": "VARCHAR(30)"
     },
     "PricePerUnit": {
         "name": "PricePerUnit",
@@ -85,7 +85,7 @@ column_titles = {
     },
     "Product Family": {
         "name": "ProductFamily",
-        "type": "VARCHAR(30)"
+        "type": "VARCHAR(60)"
     },
     "serviceCode": {
         "name": "ServiceCode",
@@ -101,7 +101,7 @@ column_titles = {
     },
     "Instance Type": {
         "name": "InstanceType",
-        "type": "VARCHAR(20)"
+        "type": "VARCHAR(50)"
     },
     "Current Generation": {
         "name": "CurrentGeneration",
@@ -141,7 +141,7 @@ column_titles = {
     },
     "Network Performance": {
         "name": "NetworkPerformance",
-        "type": "VARCHAR(16)"
+        "type": "VARCHAR(20)"
     },
     "Processor Architecture": {
         "name": "ProcessorArchitecture",
@@ -153,7 +153,7 @@ column_titles = {
     },
     "Volume Type": {
         "name": "VolumeType",
-        "type": "VARCHAR(25)"
+        "type": "VARCHAR(60)"
     },
     "Max Volume Size": {
         "name": "MaxVolumeSize",
@@ -169,11 +169,11 @@ column_titles = {
     },
     "Max throughput/volume": {
         "name": "MaxThroughputPerVolume",
-        "type": "VARCHAR(15) NOT NULL"
+        "type": "VARCHAR(15)"
     },
     "Provisioned": {
         "name": "Provisioned",
-        "type": "ENUM('','No','Yes') NOT NULL"
+        "type": "ENUM('','No','Yes')"
     },
     "Tenancy": {
         "name": "Tenancy",
@@ -181,7 +181,7 @@ column_titles = {
     },
     "EBS Optimized": {
         "name": "EBSOptimized",
-        "type": "ENUM('','Yes') NOT NULL"
+        "type": "ENUM('','Yes')"
     },
     "Operating System": {
         "name": "OS",
@@ -189,11 +189,11 @@ column_titles = {
     },
     "License Model": {
         "name": "LicenseModel",
-        "type": "VARCHAR(30)"
+        "type": "VARCHAR(50)"
     },
     "Group": {
         "name": "AWSGroup",
-        "type": "VARCHAR(30)"
+        "type": "VARCHAR(100)"
     },
     "Group Description": {
         "name": "AWSGroupDescription",
@@ -217,7 +217,7 @@ column_titles = {
     },
     "To Location Type": {
         "name": "ToLocationType",
-        "type": "VARCHAR(15)"
+        "type": "VARCHAR(30)"
     },
     "usageType": {
         "name": "UsageType",
@@ -237,11 +237,11 @@ column_titles = {
     },
     "Enhanced Networking Supported": {
         "name": "EnhancedNetworkingSupported",
-        "type": "ENUM('','No','Yes') NOT NULL"
+        "type": "ENUM('','No','Yes')"
     },
     "GPU": {
         "name": "GPU",
-        "type": "VARCHAR(2)"
+        "type": "VARCHAR(3)"
     },
     "Instance Capacity - 10xlarge": {
         "name": "InstanceCapacity10xLarge",
@@ -459,20 +459,10 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
                          user=mariadb_user,
                          passwd=mariadb_password,
                          db=mariadb_db,
+                         ssl_verify_cert=1,
                          local_infile=1)
 
     cursor = db.cursor()
-    load_data = "LOAD DATA LOCAL INFILE '" + filename + "' INTO TABLE " + table_name
-    if drop_database is True:
-        load_data += """ FIELDS TERMINATED BY ','
-            ENCLOSED BY '"'
-        LINES TERMINATED BY '\n'
-        IGNORE 6 LINES; """
-    else:
-        load_data += """ FIELDS TERMINATED BY ','
-            ENCLOSED BY '"'
-        LINES TERMINATED BY '\n'
-        IGNORE 1 LINES; """
 
     print("Checking to see if table " + table_name + " exists...")
     cursor.execute("SELECT * FROM information_schema.tables WHERE table_schema = '" + mariadb_db + "' AND table_name = '" + table_name + "' LIMIT 1;")
@@ -492,7 +482,29 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
         cursor.execute(schema)
     print("Loading csv data...")
     print("\n")
-    cursor.execute(load_data)
+
+    load_data = ""
+    number_of_rows_to_skip = 1
+    csv_file.seek(0, 0)
+    if drop_database is True:
+        number_of_rows_to_skip = 6
+
+    row_counter = 0
+    for row in csv_file:
+        row = row.decode("utf-8")
+        row = row.rstrip("\n")
+        while ",," in row:
+            row = row.replace(",,", ",NULL,")
+        if row.endswith(","):
+            row = row + "NULL"
+        row_counter = row_counter + 1
+        if row_counter <= number_of_rows_to_skip:
+            continue
+        else:
+            load_data = "INSERT INTO " + table_name + " VALUES (" + row + ");"
+            print(load_data)
+            cursor.execute(load_data)
+
     db.commit()
     cursor.close()
 
