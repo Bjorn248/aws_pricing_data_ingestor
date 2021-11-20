@@ -481,6 +481,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
         print("Creating table...")
         cursor.execute(schema)
     print("Loading csv data...")
+    print()
 
     load_data = ""
     number_of_rows_to_skip = 1
