@@ -478,7 +478,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
             except pymysql.Error as e:
                 print(schema)
                 print("ERROR: Error recreating table: ", e)
-                sys.exit(1)
+                # sys.exit(1)
             if table_name == "AmazonEC2":
                 print("Creating index on AmazonEC2 table")
                 cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location, InstanceType, Tenancy, OS, CapacityStatus, PreInstalledSW);")
@@ -490,7 +490,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
         except pymysql.Error as e:
             print(schema)
             print("ERROR: Error creating table: ", e)
-            sys.exit(1)
+            # sys.exit(1)
     print("Loading csv data...")
     print()
 
@@ -525,7 +525,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
                 except pymysql.Error as e:
                     print(load_data)
                     print("ERROR: Error executing query: ", e)
-                    sys.exit(1)
+                    # sys.exit(1)
 
                 rows = ""
             elif row_counter % batch_size == 1:
@@ -539,7 +539,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
     except pymysql.Error as e:
         print(load_data)
         print("ERROR: Error executing query: ", e)
-        sys.exit(1)
+        # sys.exit(1)
 
     db.commit()
     cursor.close()
