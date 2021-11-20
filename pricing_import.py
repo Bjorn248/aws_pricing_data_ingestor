@@ -1,4 +1,5 @@
 import os
+import sys
 import re
 import hashlib
 import json
@@ -329,11 +330,11 @@ def parse_csv_schema(file_handle, table_name):
 
 def generate_schema_from_row(row, table_name):
     print("Generating SQL Schema from CSV...")
-    schema_sql = "create table " + table_name + "(\n"
+    schema_sql = "CREATE TABLE " + table_name + "(\n"
     for column_title in row:
         column_title = column_title.strip('\"')
         if column_title in column_titles:
-            schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
+            schema_sql += '`' + column_titles[column_title]['name'] + '` ' + column_titles[column_title]['type'] + ",\n"
         else:
             schema_friendly_column_title = ""
             for character in column_title:
@@ -342,7 +343,7 @@ def generate_schema_from_row(row, table_name):
                         character = "_"
                     schema_friendly_column_title += character
 
-            schema_sql += schema_friendly_column_title + " VARCHAR(200),\n"
+            schema_sql += '`' + schema_friendly_column_title.rstrip("\n") + '`' + " VARCHAR(200),\n"
     # add below for md5 in database
     # schema_sql += "MD5 VARCHAR(33),\n"
     schema_sql = schema_sql[:-2]
@@ -472,14 +473,24 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
             print("Dropping existing table " + table_name)
             cursor.execute("DROP TABLE " + table_name + ";")
             print("Recreating table...")
-            cursor.execute(schema)
+            try:
+                cursor.execute(schema)
+            except pymysql.Error as e:
+                print(schema)
+                print("ERROR: Error recreating table: ", e)
+                sys.exit(1)
             if table_name == "AmazonEC2":
                 print("Creating index on AmazonEC2 table")
                 cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location, InstanceType, Tenancy, OS, CapacityStatus, PreInstalledSW);")
     else:
         schema = parse_csv_schema(csv_file, table_name)
         print("Creating table...")
-        cursor.execute(schema)
+        try:
+            cursor.execute(schema)
+        except pymysql.Error as e:
+            print(schema)
+            print("ERROR: Error creating table: ", e)
+            sys.exit(1)
     print("Loading csv data...")
     print()
 
@@ -513,7 +524,8 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
                     cursor.execute(load_data)
                 except pymysql.Error as e:
                     print(load_data)
-                    print("Error executing query: ", e)
+                    print("ERROR: Error executing query: ", e)
+                    sys.exit(1)
 
                 rows = ""
             elif row_counter % batch_size == 1:
@@ -526,7 +538,8 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
         cursor.execute(load_data)
     except pymysql.Error as e:
         print(load_data)
-        print("Error executing query: ", e)
+        print("ERROR: Error executing query: ", e)
+        sys.exit(1)
 
     db.commit()
     cursor.close()
