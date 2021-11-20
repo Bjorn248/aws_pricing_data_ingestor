@@ -47,7 +47,7 @@ def lambda_handler(event, context):
         },
         "PriceDescription": {
             "name": "PriceDescription",
-            "type": "VARCHAR(119) NOT NULL"
+            "type": "VARCHAR(140) NOT NULL"
         },
         "EffectiveDate": {
             "name": "EffectiveDate",
@@ -55,15 +55,15 @@ def lambda_handler(event, context):
         },
         "StartingRange": {
             "name": "StartingRange",
-            "type": "VARCHAR(6) NOT NULL"
+            "type": "VARCHAR(15)"
         },
         "EndingRange": {
             "name": "EndingRange",
-            "type": "VARCHAR(6) NOT NULL"
+            "type": "VARCHAR(15)"
         },
         "Unit": {
             "name": "Unit",
-            "type": "VARCHAR(16)"
+            "type": "VARCHAR(40)"
         },
         "PricePerUnit": {
             "name": "PricePerUnit",
@@ -79,7 +79,7 @@ def lambda_handler(event, context):
         },
         "PurchaseOption": {
             "name": "PurchaseOption",
-            "type": "VARCHAR(15)"
+            "type": "VARCHAR(20)"
         },
         "OfferingClass": {
             "name": "OfferingClass",
@@ -87,7 +87,7 @@ def lambda_handler(event, context):
         },
         "Product Family": {
             "name": "ProductFamily",
-            "type": "VARCHAR(30)"
+            "type": "VARCHAR(60)"
         },
         "serviceCode": {
             "name": "ServiceCode",
@@ -103,7 +103,7 @@ def lambda_handler(event, context):
         },
         "Instance Type": {
             "name": "InstanceType",
-            "type": "VARCHAR(20)"
+            "type": "VARCHAR(50)"
         },
         "Current Generation": {
             "name": "CurrentGeneration",
@@ -123,7 +123,7 @@ def lambda_handler(event, context):
         },
         "vCPU": {
             "name": "vCPU",
-            "type": "VARCHAR(3)"
+            "type": "VARCHAR(4)"
         },
         "Physical Processor": {
             "name": "PhysicalProcessor",
@@ -135,15 +135,15 @@ def lambda_handler(event, context):
         },
         "Memory": {
             "name": "Memory",
-            "type": "VARCHAR(9)"
+            "type": "VARCHAR(12)"
         },
         "Storage": {
             "name": "Storage",
-            "type": "VARCHAR(20)"
+            "type": "VARCHAR(30)"
         },
         "Network Performance": {
             "name": "NetworkPerformance",
-            "type": "VARCHAR(16)"
+            "type": "VARCHAR(20)"
         },
         "Processor Architecture": {
             "name": "ProcessorArchitecture",
@@ -155,7 +155,7 @@ def lambda_handler(event, context):
         },
         "Volume Type": {
             "name": "VolumeType",
-            "type": "VARCHAR(25)"
+            "type": "VARCHAR(80)"
         },
         "Max Volume Size": {
             "name": "MaxVolumeSize",
@@ -171,11 +171,11 @@ def lambda_handler(event, context):
         },
         "Max throughput/volume": {
             "name": "MaxThroughputPerVolume",
-            "type": "VARCHAR(15) NOT NULL"
+            "type": "VARCHAR(15)"
         },
         "Provisioned": {
             "name": "Provisioned",
-            "type": "ENUM('','No','Yes') NOT NULL"
+            "type": "ENUM('','No','Yes')"
         },
         "Tenancy": {
             "name": "Tenancy",
@@ -183,7 +183,7 @@ def lambda_handler(event, context):
         },
         "EBS Optimized": {
             "name": "EBSOptimized",
-            "type": "ENUM('','Yes') NOT NULL"
+            "type": "ENUM('','Yes')"
         },
         "Operating System": {
             "name": "OS",
@@ -191,43 +191,43 @@ def lambda_handler(event, context):
         },
         "License Model": {
             "name": "LicenseModel",
-            "type": "VARCHAR(30)"
+            "type": "VARCHAR(50)"
         },
         "Group": {
             "name": "AWSGroup",
-            "type": "VARCHAR(30)"
+            "type": "VARCHAR(100)"
         },
         "Group Description": {
             "name": "AWSGroupDescription",
-            "type": "VARCHAR(100)"
+            "type": "VARCHAR(300)"
         },
         "Transfer Type": {
             "name": "TransferType",
-            "type": "VARCHAR(30)"
+            "type": "VARCHAR(200)"
         },
         "From Location": {
             "name": "FromLocation",
-            "type": "VARCHAR(30)"
+            "type": "VARCHAR(50)"
         },
         "From Location Type": {
             "name": "FromLocationType",
-            "type": "VARCHAR(15)"
+            "type": "VARCHAR(50)"
         },
         "To Location": {
             "name": "ToLocation",
-            "type": "VARCHAR(30)"
+            "type": "VARCHAR(50)"
         },
         "To Location Type": {
             "name": "ToLocationType",
-            "type": "VARCHAR(15)"
+            "type": "VARCHAR(50)"
         },
         "usageType": {
             "name": "UsageType",
-            "type": "VARCHAR(50)"
+            "type": "VARCHAR(60)"
         },
         "operation": {
             "name": "Operation",
-            "type": "VARCHAR(30)"
+            "type": "VARCHAR(40)"
         },
         "Comments": {
             "name": "Comments",
@@ -239,11 +239,11 @@ def lambda_handler(event, context):
         },
         "Enhanced Networking Supported": {
             "name": "EnhancedNetworkingSupported",
-            "type": "ENUM('','No','Yes') NOT NULL"
+            "type": "ENUM('','No','Yes')"
         },
         "GPU": {
             "name": "GPU",
-            "type": "VARCHAR(2)"
+            "type": "VARCHAR(3)"
         },
         "Instance Capacity - 10xlarge": {
             "name": "InstanceCapacity10xLarge",
@@ -303,6 +303,7 @@ def lambda_handler(event, context):
         }
     }
 
+
     def md5(file):
         hash_md5 = hashlib.md5()
         with open(file, 'rb') as f:
@@ -310,12 +311,14 @@ def lambda_handler(event, context):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
 
+
     def download_file(targetURL, filename):
         print("Downloading file from " + targetURL + "...\n")
         response = requests.get(targetURL, stream=True)
 
         with open(filename, 'wb') as f:
             f.write(response.content)
+
 
     def parse_csv_schema(file_handle, table_name):
         file_handle.seek(0, 0)
@@ -325,14 +328,14 @@ def lambda_handler(event, context):
                 schema = generate_schema_from_row(l.split(','), table_name)
                 return schema
 
+
     def generate_schema_from_row(row, table_name):
         print("Generating SQL Schema from CSV...")
-        schema_sql = "create table " + table_name + "(\n"
-        # figure out why this dict lookup is broken in python 3
+        schema_sql = "CREATE TABLE " + table_name + "(\n"
         for column_title in row:
             column_title = column_title.strip('\"')
             if column_title in column_titles:
-                schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
+                schema_sql += '`' + column_titles[column_title]['name'] + '` ' + column_titles[column_title]['type'] + ",\n"
             else:
                 schema_friendly_column_title = ""
                 for character in column_title:
@@ -341,10 +344,13 @@ def lambda_handler(event, context):
                             character = "_"
                         schema_friendly_column_title += character
 
-                schema_sql += schema_friendly_column_title + " VARCHAR(200),\n"
+                schema_sql += '`' + schema_friendly_column_title.rstrip("\n") + '`' + " VARCHAR(200),\n"
+        # add below for md5 in database
+        # schema_sql += "MD5 VARCHAR(33),\n"
         schema_sql = schema_sql[:-2]
         schema_sql += ");\n"
         return schema_sql
+
 
     def process_offer(offer_code_url, csv_file):
 
@@ -448,26 +454,17 @@ def lambda_handler(event, context):
                 csv_file.seek(0)
                 csv_file.truncate()
 
+
     def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
 
         db = pymysql.connect(host=mariadb_host,
                              user=mariadb_user,
                              passwd=mariadb_password,
                              db=mariadb_db,
+                             ssl_verify_cert=1,
                              local_infile=1)
 
         cursor = db.cursor()
-        load_data = "LOAD DATA LOCAL INFILE '" + filename + "' INTO TABLE " + table_name
-        if drop_database is True:
-            load_data += """ FIELDS TERMINATED BY ','
-                ENCLOSED BY '"'
-            LINES TERMINATED BY '\n'
-            IGNORE 6 LINES; """
-        else:
-            load_data += """ FIELDS TERMINATED BY ','
-                ENCLOSED BY '"'
-            LINES TERMINATED BY '\n'
-            IGNORE 1 LINES; """
 
         print("Checking to see if table " + table_name + " exists...")
         cursor.execute("SELECT * FROM information_schema.tables WHERE table_schema = '" + mariadb_db + "' AND table_name = '" + table_name + "' LIMIT 1;")
@@ -477,19 +474,77 @@ def lambda_handler(event, context):
                 print("Dropping existing table " + table_name)
                 cursor.execute("DROP TABLE " + table_name + ";")
                 print("Recreating table...")
-                cursor.execute(schema)
+                try:
+                    cursor.execute(schema)
+                except pymysql.Error as e:
+                    print(schema)
+                    print("ERROR: Error recreating table: ", e)
+                    # sys.exit(1)
                 if table_name == "AmazonEC2":
                     print("Creating index on AmazonEC2 table")
                     cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location, InstanceType, Tenancy, OS, CapacityStatus, PreInstalledSW);")
         else:
             schema = parse_csv_schema(csv_file, table_name)
             print("Creating table...")
-            cursor.execute(schema)
+            try:
+                cursor.execute(schema)
+            except pymysql.Error as e:
+                print(schema)
+                print("ERROR: Error creating table: ", e)
+                # sys.exit(1)
         print("Loading csv data...")
-        print("\n")
-        cursor.execute(load_data)
+        print()
+
+        load_data = ""
+        number_of_rows_to_skip = 1
+        csv_file.seek(0, 0)
+        if drop_database is True:
+            number_of_rows_to_skip = 6
+
+        row_counter = 0
+        rows = ""
+        for row in csv_file:
+            row = row.decode("utf-8")
+            row = row.rstrip("\n")
+            while ",," in row:
+                row = row.replace(",,", ",NULL,")
+            if row.endswith(","):
+                row = row + "NULL"
+            row_counter = row_counter + 1
+            if row_counter <= number_of_rows_to_skip:
+                continue
+            elif row_counter == number_of_rows_to_skip + 1:
+                rows = "(" + row + ")"
+            else:
+                batch_size = 1000
+                # Insert data in batches of batch_size rows
+                if row_counter % batch_size == 0:
+                    rows = rows + ", (" + row + ")"
+                    load_data = "INSERT INTO " + table_name + " VALUES " + rows + ";"
+                    try:
+                        cursor.execute(load_data)
+                    except pymysql.Error as e:
+                        print(load_data)
+                        print("ERROR: Error executing query: ", e)
+                        # sys.exit(1)
+
+                    rows = ""
+                elif row_counter % batch_size == 1:
+                    rows = "(" + row + ")"
+                else:
+                    rows = rows + ", (" + row + ")"
+
+        load_data = "INSERT INTO " + table_name + " VALUES " + rows + ";"
+        try:
+            cursor.execute(load_data)
+        except pymysql.Error as e:
+            print(load_data)
+            print("ERROR: Error executing query: ", e)
+            # sys.exit(1)
+
         db.commit()
         cursor.close()
+
 
     offer_index_filename = "/tmp/offer_index.json"
 
