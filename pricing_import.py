@@ -61,7 +61,7 @@ column_titles = {
     },
     "Unit": {
         "name": "Unit",
-        "type": "VARCHAR(30)"
+        "type": "VARCHAR(40)"
     },
     "PricePerUnit": {
         "name": "PricePerUnit",
@@ -77,7 +77,7 @@ column_titles = {
     },
     "PurchaseOption": {
         "name": "PurchaseOption",
-        "type": "VARCHAR(15)"
+        "type": "VARCHAR(20)"
     },
     "OfferingClass": {
         "name": "OfferingClass",
@@ -121,7 +121,7 @@ column_titles = {
     },
     "vCPU": {
         "name": "vCPU",
-        "type": "VARCHAR(3)"
+        "type": "VARCHAR(4)"
     },
     "Physical Processor": {
         "name": "PhysicalProcessor",
@@ -133,11 +133,11 @@ column_titles = {
     },
     "Memory": {
         "name": "Memory",
-        "type": "VARCHAR(9)"
+        "type": "VARCHAR(12)"
     },
     "Storage": {
         "name": "Storage",
-        "type": "VARCHAR(20)"
+        "type": "VARCHAR(30)"
     },
     "Network Performance": {
         "name": "NetworkPerformance",
@@ -153,7 +153,7 @@ column_titles = {
     },
     "Volume Type": {
         "name": "VolumeType",
-        "type": "VARCHAR(60)"
+        "type": "VARCHAR(80)"
     },
     "Max Volume Size": {
         "name": "MaxVolumeSize",
@@ -197,35 +197,35 @@ column_titles = {
     },
     "Group Description": {
         "name": "AWSGroupDescription",
-        "type": "VARCHAR(100)"
+        "type": "VARCHAR(300)"
     },
     "Transfer Type": {
         "name": "TransferType",
-        "type": "VARCHAR(30)"
+        "type": "VARCHAR(200)"
     },
     "From Location": {
         "name": "FromLocation",
-        "type": "VARCHAR(30)"
+        "type": "VARCHAR(50)"
     },
     "From Location Type": {
         "name": "FromLocationType",
-        "type": "VARCHAR(15)"
+        "type": "VARCHAR(50)"
     },
     "To Location": {
         "name": "ToLocation",
-        "type": "VARCHAR(30)"
+        "type": "VARCHAR(50)"
     },
     "To Location Type": {
         "name": "ToLocationType",
-        "type": "VARCHAR(30)"
+        "type": "VARCHAR(50)"
     },
     "usageType": {
         "name": "UsageType",
-        "type": "VARCHAR(50)"
+        "type": "VARCHAR(60)"
     },
     "operation": {
         "name": "Operation",
-        "type": "VARCHAR(30)"
+        "type": "VARCHAR(40)"
     },
     "Comments": {
         "name": "Comments",
@@ -481,7 +481,6 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
         print("Creating table...")
         cursor.execute(schema)
     print("Loading csv data...")
-    print("\n")
 
     load_data = ""
     number_of_rows_to_skip = 1
@@ -490,6 +489,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
         number_of_rows_to_skip = 6
 
     row_counter = 0
+    rows = ""
     for row in csv_file:
         row = row.decode("utf-8")
         row = row.rstrip("\n")
@@ -500,10 +500,32 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
         row_counter = row_counter + 1
         if row_counter <= number_of_rows_to_skip:
             continue
+        elif row_counter == number_of_rows_to_skip + 1:
+            rows = "(" + row + ")"
         else:
-            load_data = "INSERT INTO " + table_name + " VALUES (" + row + ");"
-            print(load_data)
-            cursor.execute(load_data)
+            batch_size = 1000
+            # Insert data in batches of batch_size rows
+            if row_counter % batch_size == 0:
+                rows = rows + ", (" + row + ")"
+                load_data = "INSERT INTO " + table_name + " VALUES " + rows + ";"
+                try:
+                    cursor.execute(load_data)
+                except pymysql.Error as e:
+                    print(load_data)
+                    print("Error executing query: ", e)
+
+                rows = ""
+            elif row_counter % batch_size == 1:
+                rows = "(" + row + ")"
+            else:
+                rows = rows + ", (" + row + ")"
+
+    load_data = "INSERT INTO " + table_name + " VALUES " + rows + ";"
+    try:
+        cursor.execute(load_data)
+    except pymysql.Error as e:
+        print(load_data)
+        print("Error executing query: ", e)
 
     db.commit()
     cursor.close()
