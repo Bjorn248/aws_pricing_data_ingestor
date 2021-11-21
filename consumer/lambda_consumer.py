@@ -339,7 +339,7 @@ def lambda_handler(event, context):
         # add below for md5 in database
         # schema_sql += "MD5 VARCHAR(33),\n"
         schema_sql = schema_sql[:-2]
-        schema_sql += ");\n"
+        schema_sql += ") CHARACTER SET 'utf8';\n"
         return schema_sql
 
 
@@ -349,6 +349,7 @@ def lambda_handler(event, context):
                              user=mariadb_user,
                              passwd=mariadb_password,
                              db=mariadb_db,
+                             charset='utf8',
                              ssl_verify_cert=1)
 
         cursor = db.cursor()
@@ -457,6 +458,7 @@ def lambda_handler(event, context):
                              user=mariadb_user,
                              passwd=mariadb_password,
                              db=mariadb_db,
+                             charset='utf8',
                              ssl_verify_cert=1)
 
         cursor = db.cursor()

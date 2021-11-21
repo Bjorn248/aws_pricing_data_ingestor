@@ -336,7 +336,7 @@ def generate_schema_from_row(row, table_name):
     # add below for md5 in database
     # schema_sql += "MD5 VARCHAR(33),\n"
     schema_sql = schema_sql[:-2]
-    schema_sql += ");\n"
+    schema_sql += ") CHARACTER SET 'utf8';\n"
     return schema_sql
 
 
@@ -346,6 +346,7 @@ def process_offer(url, csv_file):
                          user=mariadb_user,
                          passwd=mariadb_password,
                          db=mariadb_db,
+                         charset='utf8',
                          ssl_verify_cert=1)
 
     cursor = db.cursor()
@@ -454,6 +455,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
                          user=mariadb_user,
                          passwd=mariadb_password,
                          db=mariadb_db,
+                         charset='utf8',
                          ssl_verify_cert=1)
 
     cursor = db.cursor()
@@ -471,7 +473,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
             except pymysql.Error as e:
                 print(schema)
                 print("ERROR: Error recreating table: ", e)
-                # sys.exit(1)
+                sys.exit(1)
     else:
         schema = parse_csv_schema(csv_file, table_name)
         print("Creating table...")
@@ -480,7 +482,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
         except pymysql.Error as e:
             print(schema)
             print("ERROR: Error creating table: ", e)
-            # sys.exit(1)
+            sys.exit(1)
     print("Loading csv data...")
     print()
 
@@ -515,7 +517,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
                 except pymysql.Error as e:
                     print(load_data)
                     print("ERROR: Error executing query: ", e)
-                    # sys.exit(1)
+                    sys.exit(1)
 
                 rows = ""
             elif row_counter % batch_size == 1:
@@ -529,7 +531,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
     except pymysql.Error as e:
         print(load_data)
         print("ERROR: Error executing query: ", e)
-        # sys.exit(1)
+        sys.exit(1)
 
     db.commit()
     cursor.close()
