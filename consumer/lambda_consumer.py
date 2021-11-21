@@ -1,4 +1,5 @@
 import os
+import sys
 import re
 import requests
 import hashlib
@@ -473,7 +474,7 @@ def lambda_handler(event, context):
                 except pymysql.Error as e:
                     print(schema)
                     print("ERROR: Error recreating table: ", e)
-                    # sys.exit(1)
+                    sys.exit(1)
         else:
             schema = parse_csv_schema(csv_file, table_name)
             print("Creating table...")
@@ -482,7 +483,7 @@ def lambda_handler(event, context):
             except pymysql.Error as e:
                 print(schema)
                 print("ERROR: Error creating table: ", e)
-                # sys.exit(1)
+                sys.exit(1)
         print("Loading csv data...")
         print()
 
@@ -517,7 +518,7 @@ def lambda_handler(event, context):
                     except pymysql.Error as e:
                         print(load_data)
                         print("ERROR: Error executing query: ", e)
-                        # sys.exit(1)
+                        sys.exit(1)
 
                     rows = ""
                 elif row_counter % batch_size == 1:
@@ -531,7 +532,7 @@ def lambda_handler(event, context):
         except pymysql.Error as e:
             print(load_data)
             print("ERROR: Error executing query: ", e)
-            # sys.exit(1)
+            sys.exit(1)
 
         db.commit()
         cursor.close()
