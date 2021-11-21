@@ -1,9 +1,9 @@
 import os
-import sys
 import re
+import requests
 import hashlib
 import json
-import requests
+import boto3
 import pymysql.cursors
 
 
@@ -26,6 +26,12 @@ if "MARIADB_DB" in os.environ:
     mariadb_db = os.environ["MARIADB_DB"]
 else:
     mariadb_db = "aws_prices"
+
+if "SQS_QUEUE" in os.environ:
+    sqs_queue = os.environ["SQS_QUEUE"]
+else:
+    sqs_queue = "aws_service_ingestor"
+
 
 column_titles = {
     "SKU": {
@@ -302,23 +308,6 @@ column_titles = {
     }
 }
 
-
-def md5(file):
-    hash_md5 = hashlib.md5()
-    with open(file, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
-
-
-def download_file(targetURL, filename):
-    print("Downloading file from " + targetURL + "...\n")
-    response = requests.get(targetURL, stream=True)
-
-    with open(filename, 'wb') as f:
-        f.write(response.content)
-
-
 def parse_csv_schema(file_handle, table_name):
     file_handle.seek(0, 0)
     for l in file_handle:
@@ -351,17 +340,19 @@ def generate_schema_from_row(row, table_name):
     return schema_sql
 
 
-def process_offer(offer_code_url, csv_file):
+def process_offer(url, csv_file):
 
-    offer_code = offer_code_url.split('/')[4]
+    db = pymysql.connect(host=mariadb_host,
+                         user=mariadb_user,
+                         passwd=mariadb_password,
+                         db=mariadb_db,
+                         ssl_verify_cert=1)
 
-    print("Processing Offer " + offer_code)
+    cursor = db.cursor()
 
-    base_url = "https://pricing.us-east-1.amazonaws.com"
+    table_name = url.split('/')[6]
 
-    offer_code_url = offer_code_url[:-5] + ".csv"
-
-    url = base_url + offer_code_url
+    print("Processing Offer " + table_name)
 
     print("Downloading chunks of " + url + "...")
     response = requests.get(url, stream=True)
@@ -401,8 +392,8 @@ def process_offer(offer_code_url, csv_file):
         file_written = file_written + written
         position = 0
 
-        # Limit local filesize to 64MB
-        if file_written > 67108864:
+        # Limit local filesize to 256MB
+        if file_written > 268435456:
             file_written = 0
             file_number += 1
             new_file = True
@@ -434,7 +425,7 @@ def process_offer(offer_code_url, csv_file):
                     # Move 1 character forward, we want to retain the newline
                     csv_file.seek(-position + 1, 2)
                     csv_file.truncate()
-                    import_csv_into_mariadb(filepath, offer_code, drop_database, csv_file)
+                    import_csv_into_mariadb(filepath, table_name, drop_database, csv_file)
 
                     # Empty file
                     csv_file.seek(0)
@@ -449,7 +440,10 @@ def process_offer(offer_code_url, csv_file):
             else:
                 drop_db = True
             print("Downloaded: 100 %")
-            import_csv_into_mariadb(filepath, offer_code, drop_db, csv_file)
+            import_csv_into_mariadb(filepath, table_name, drop_db, csv_file)
+            if table_name == "AmazonEC2":
+                print("Creating index on AmazonEC2 table")
+                cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location, InstanceType, Tenancy, OS, CapacityStatus, PreInstalledSW);")
             csv_file.seek(0)
             csv_file.truncate()
 
@@ -460,8 +454,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
                          user=mariadb_user,
                          passwd=mariadb_password,
                          db=mariadb_db,
-                         ssl_verify_cert=1,
-                         local_infile=1)
+                         ssl_verify_cert=1)
 
     cursor = db.cursor()
 
@@ -479,9 +472,6 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
                 print(schema)
                 print("ERROR: Error recreating table: ", e)
                 # sys.exit(1)
-            if table_name == "AmazonEC2":
-                print("Creating index on AmazonEC2 table")
-                cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location, InstanceType, Tenancy, OS, CapacityStatus, PreInstalledSW);")
     else:
         schema = parse_csv_schema(csv_file, table_name)
         print("Creating table...")
@@ -545,36 +535,11 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
     cursor.close()
 
 
-offer_index_filename = "/tmp/offer_index.json"
-
-offer_index_exists = os.path.isfile(offer_index_filename)
-
-offer_index_url = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json"
-
-if offer_index_exists:
-    resp = requests.head(offer_index_url)
-    md5_remote = resp.headers['etag'][1:-1]
-    if md5(offer_index_filename) == md5_remote:
-        print("You already have the latest offer index!")
-    else:
-        download_file(offer_index_url, offer_index_filename)
-else:
-    download_file(offer_index_url, offer_index_filename)
-
-with open(offer_index_filename) as json_data:
-    offer_index = json.load(json_data)
-
-filenames = []
-urls = []
-number_of_threads = 0
-for offer, offer_info in offer_index['offers'].items():
-    number_of_threads += 1
-    filenames.append(offer + ".csv")
-    urls.append(offer_info['currentVersionUrl'])
-
 filepath = "/tmp/working_copy.csv"
 
 csv_file_handle = open(filepath, "w+b")
 
-for url in urls:
-    process_offer(url, csv_file_handle)
+# EC2 URL https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.csv
+ec2_url = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.csv"
+
+process_offer(ec2_url, csv_file_handle)

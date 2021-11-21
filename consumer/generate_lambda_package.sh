@@ -6,7 +6,7 @@ pipenv lock -r > requirements.txt
 
 pipenv run pip install -r requirements.txt -t build
 
-cp ./lambda_import.py ./build
+cp ./lambda_consumer.py ./build
 
 pushd build
 
