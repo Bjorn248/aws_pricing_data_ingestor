@@ -396,8 +396,8 @@ def lambda_handler(event, context):
             file_written = file_written + written
             position = 0
 
-            # Limit local filesize to 256MB
-            if file_written > 268435456:
+            # Limit local filesize to 384MB
+            if file_written > 402653184:
                 file_written = 0
                 file_number += 1
                 new_file = True
@@ -554,6 +554,8 @@ def lambda_handler(event, context):
 
         # Create SQS client
         sqs = boto3.client('sqs')
+
+        print("Deleting SQS Message...")
 
         response = sqs.delete_message(
             QueueUrl=sqs_queue,
