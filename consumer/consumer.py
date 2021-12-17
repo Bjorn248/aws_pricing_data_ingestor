@@ -132,7 +132,7 @@ column_titles = {
     },
     "Physical Processor": {
         "name": "PhysicalProcessor",
-        "type": "VARCHAR(50)"
+        "type": "VARCHAR(100)"
     },
     "Clock Speed": {
         "name": "ClockSpeed",
