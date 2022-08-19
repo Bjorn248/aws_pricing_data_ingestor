@@ -500,6 +500,9 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
     if schema:
         cursor.execute(load_data)
         db.commit()
+    elif drop_database == False:
+        cursor.execute(load_data)
+        db.commit()
 
     cursor.close()
     db.close()
