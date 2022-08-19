@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import os
 import re
 import hashlib
@@ -350,7 +352,7 @@ def generate_schema_from_row(row, table_name):
     return schema_sql
 
 
-def process_offer(offer_code_url, csv_file):
+def process_offer(offer_code_url, csv_file, filepath):
 
     offer_code = offer_code_url.split('/')[4]
 
@@ -462,6 +464,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
                          local_infile=1)
 
     cursor = db.cursor()
+    schema = ""
     load_data = "LOAD DATA LOCAL INFILE '" + filename + "' INTO TABLE " + table_name
     if drop_database is True:
         load_data += """ FIELDS TERMINATED BY ','
@@ -482,51 +485,58 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
             print("Dropping existing table " + table_name)
             cursor.execute("DROP TABLE " + table_name + ";")
             print("Recreating table...")
-            cursor.execute(schema)
-            if table_name == "AmazonEC2":
-                print("Creating index on AmazonEC2 table")
-                cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location, InstanceType, Tenancy, OS, CapacityStatus, PreInstalledSW);")
+            if schema:
+                cursor.execute(schema)
+                if table_name == "AmazonEC2":
+                    print("Creating index on AmazonEC2 table")
+                    cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location, InstanceType, Tenancy, OS, CapacityStatus, PreInstalledSW);")
     else:
         schema = parse_csv_schema(csv_file, table_name)
         print("Creating table...")
-        cursor.execute(schema)
+        if schema:
+            cursor.execute(schema)
     print("Loading csv data...")
     print("\n")
-    cursor.execute(load_data)
-    db.commit()
+    if schema:
+        cursor.execute(load_data)
+        db.commit()
+
     cursor.close()
+    db.close()
 
 
-offer_index_filename = "/tmp/offer_index.json"
+def do_import():
 
-offer_index_exists = os.path.isfile(offer_index_filename)
+    offer_index_filename = "/tmp/offer_index.json"
 
-offer_index_url = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json"
+    offer_index_exists = os.path.isfile(offer_index_filename)
 
-if offer_index_exists:
-    resp = requests.head(offer_index_url)
-    md5_remote = resp.headers['etag'][1:-1]
-    if md5(offer_index_filename) == md5_remote:
-        print("You already have the latest offer index!")
+    offer_index_url = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json"
+
+    if offer_index_exists:
+        resp = requests.head(offer_index_url)
+        md5_remote = resp.headers['etag'][1:-1]
+        if md5(offer_index_filename) == md5_remote:
+            print("You already have the latest offer index!")
+        else:
+            download_file(offer_index_url, offer_index_filename)
     else:
         download_file(offer_index_url, offer_index_filename)
-else:
-    download_file(offer_index_url, offer_index_filename)
 
-with open(offer_index_filename) as json_data:
-    offer_index = json.load(json_data)
+    with open(offer_index_filename) as json_data:
+        offer_index = json.load(json_data)
 
-filenames = []
-urls = []
-number_of_threads = 0
-for offer, offer_info in offer_index['offers'].items():
-    number_of_threads += 1
-    filenames.append(offer + ".csv")
-    urls.append(offer_info['currentVersionUrl'])
+    filenames = []
+    urls = []
+    number_of_threads = 0
+    for offer, offer_info in offer_index['offers'].items():
+        number_of_threads += 1
+        filenames.append(offer + ".csv")
+        urls.append(offer_info['currentVersionUrl'])
 
-filepath = "/tmp/working_copy.csv"
+    filepath = "/tmp/working_copy.csv"
 
-csv_file_handle = open(filepath, "w+b")
+    csv_file_handle = open(filepath, "w+b")
 
-for url in urls:
-    process_offer(url, csv_file_handle)
+    for url in urls:
+        process_offer(url, csv_file_handle, filepath)
