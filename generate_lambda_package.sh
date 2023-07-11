@@ -2,7 +2,7 @@
 
 set -ex
 
-pipenv lock -r > requirements.txt
+pipenv requirements > requirements.txt
 
 pipenv run pip install -r requirements.txt -t build
 
