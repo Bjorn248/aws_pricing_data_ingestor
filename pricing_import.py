@@ -331,9 +331,13 @@ def parse_csv_schema(file_handle, table_name):
 
 def generate_schema_from_row(row, table_name):
     print("Generating SQL Schema from CSV...")
+    columns_so_far = {}
     schema_sql = "create table " + table_name + "(\n"
     for column_title in row:
-        column_title = column_title.strip('\"')
+        column_title = column_title.strip("\n").strip('\"')
+        if column_title in columns_so_far:
+            column_title = column_title + '2'
+        columns_so_far[column_title] = True
         if column_title in column_titles:
             schema_sql += column_titles[column_title]['name'] + ' ' + column_titles[column_title]['type'] + ",\n"
         else:
