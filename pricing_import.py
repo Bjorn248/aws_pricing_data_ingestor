@@ -348,7 +348,7 @@ def generate_schema_from_row(row, table_name):
                         character = "_"
                     schema_friendly_column_title += character
 
-            schema_sql += schema_friendly_column_title + " VARCHAR(200),\n"
+            schema_sql += schema_friendly_column_title + " TEXT,\n"
     # add below for md5 in database
     # schema_sql += "MD5 VARCHAR(33),\n"
     schema_sql = schema_sql[:-2]
