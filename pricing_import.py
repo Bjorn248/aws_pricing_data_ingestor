@@ -493,7 +493,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
                 cursor.execute(schema)
                 if table_name == "AmazonEC2":
                     print("Creating index on AmazonEC2 table")
-                    cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location, InstanceType, Tenancy, OS, CapacityStatus, PreInstalledSW);")
+                    cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location(50), InstanceType(20), Tenancy(10), OS(40), CapacityStatus(20), PreInstalledSW(10));")
     else:
         schema = parse_csv_schema(csv_file, table_name)
         print("Creating table...")
@@ -501,7 +501,7 @@ def import_csv_into_mariadb(filename, table_name, drop_database, csv_file):
             cursor.execute(schema)
             if table_name == "AmazonEC2":
                 print("Creating index on AmazonEC2 table")
-                cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location, InstanceType, Tenancy, OS, CapacityStatus, PreInstalledSW);")
+                cursor.execute("CREATE INDEX ec2_index ON AmazonEC2 (TermType, Location(50), InstanceType(20), Tenancy(10), OS(40), CapacityStatus(20), PreInstalledSW(10));")
     print("Loading csv data...")
     print("\n")
     if schema:
